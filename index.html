@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hearthbound — A Medieval Colony</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wood-dark:#241812;
+    --wood-mid:#3a271b;
+    --parchment:#e8d9b5;
+    --parchment-dark:#d4c294;
+    --ink:#2b1d14;
+    --moss:#5a7247;
+    --moss-dark:#3f5233;
+    --ember:#c97a3c;
+    --ember-bright:#e0954f;
+    --stone:#8a8578;
+    --danger:#8b3a2f;
+    --water:#3f6b7a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; overflow:hidden;
+    background:var(--wood-dark);
+    font-family:'EB Garamond', serif;
+    color:var(--parchment);
+    user-select:none;
+  }
+  #world{
+    position:absolute; inset:0;
+    display:block;
+    cursor:grab;
+  }
+  #world.dragging{ cursor:grabbing; }
+
+  .panel{
+    background:linear-gradient(180deg, var(--parchment) 0%, var(--parchment-dark) 100%);
+    border:2px solid var(--ink);
+    border-radius:6px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.15);
+    color:var(--ink);
+  }
+
+  /* Top title bar */
+  #titlebar{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 18px;
+    background:linear-gradient(180deg, rgba(36,24,18,0.92), rgba(36,24,18,0));
+    pointer-events:none;
+    z-index:5;
+  }
+  #titlebar h1{
+    margin:0;
+    font-family:'Cinzel', serif;
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:1.5px;
+    color:var(--ember-bright);
+    text-shadow:0 2px 3px rgba(0,0,0,0.6);
+  }
+  #titlebar .subtitle{
+    font-family:'EB Garamond', serif;
+    font-style:italic;
+    font-size:13px;
+    color:var(--parchment-dark);
+    opacity:0.85;
+    margin-top:-2px;
+  }
+
+  /* Resource bar */
+  #resourcebar{
+    display:flex; gap:10px;
+    pointer-events:auto;
+  }
+  .resource{
+    display:flex; align-items:center; gap:6px;
+    padding:5px 12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    font-weight:500;
+  }
+  .resource .dot{
+    width:9px; height:9px; border-radius:2px;
+    display:inline-block;
+  }
+  .dot.wood{ background:#7a5230; }
+  .dot.stone{ background:#8a8578; }
+  .dot.food{ background:#8c9c3f; }
+
+  /* Bottom UI cluster: info panel (left) / colonist bar (center) / build+zoom (right).
+     A single flex row reserves space for each so they can't overlap regardless of
+     viewport width — replaces the old independent position:absolute elements. */
+  #bottombar{
+    position:absolute; left:0; right:0; bottom:14px;
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:8px; padding:0 14px;
+    z-index:5; pointer-events:none;
+  }
+  #bottombar > *{ pointer-events:auto; }
+
+  /* Bottom info panel (hover/selection) */
+  #infopanel{
+    flex:0 1 260px;
+    min-width:0;
+    padding:10px 14px;
+    font-size:14px;
+    line-height:1.5;
+    transition:opacity 0.15s ease;
+  }
+  #infopanel .title{
+    font-family:'Cinzel', serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--moss-dark);
+    margin-bottom:3px;
+  }
+  #infopanel .row{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    opacity:0.85;
+  }
+
+  /* Zoom controls */
+  #zoomcontrols{
+    display:flex; flex-direction:column; gap:6px;
+  }
+  #zoomcontrols button{
+    width:38px; height:38px;
+    font-family:'Cinzel', serif;
+    font-size:18px;
+    font-weight:700;
+    background:linear-gradient(180deg, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink);
+    border-radius:6px;
+    color:var(--ink);
+    cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #zoomcontrols button:active{ transform:translateY(1px); }
+
+  /* Save/load test controls */
+  #savecontrols{
+    position:absolute; left:14px; top:56px;
+    display:flex; align-items:center; gap:8px;
+    z-index:5;
+  }
+  #savecontrols button{
+    padding:7px 14px;
+    font-family:'Cinzel', serif; font-size:12px; font-weight:700;
+    letter-spacing:0.5px; text-transform:uppercase;
+    background:linear-gradient(180deg, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:6px;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #savecontrols button:active{ transform:translateY(1px); }
+  #saveStatus{
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+    color:var(--parchment-dark); opacity:0.85;
+    text-shadow:0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  /* Compass / legend, top-right */
+  #legend{
+    position:absolute; top:56px; right:14px;
+    padding:10px 14px;
+    font-size:12.5px;
+    z-index:5;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  #legend .title{
+    font-family:'Cinzel', serif; font-weight:700; font-size:12px;
+    letter-spacing:0.5px; text-transform:uppercase;
+    color:var(--moss-dark); margin-bottom:2px;
+  }
+  #legend .item{ display:flex; align-items:center; gap:7px; }
+  #legend .swatch{ width:11px; height:11px; border-radius:2px; border:1px solid rgba(0,0,0,0.3); }
+
+  #hint{
+    position:absolute; left:50%; top:14px; transform:translateX(-50%);
+    font-family:'EB Garamond', serif; font-style:italic;
+    font-size:13px; color:var(--parchment-dark);
+    opacity:0.75; z-index:5; pointer-events:none;
+    text-shadow:0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  /* Colonist detail panel additions */
+  #infopanel .traits{
+    display:flex; flex-wrap:wrap; gap:4px;
+    margin:6px 0 4px;
+  }
+  #infopanel .trait-tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px; padding:2px 7px;
+    background:var(--moss); color:var(--parchment);
+    border-radius:10px;
+  }
+  #infopanel .bar-row{
+    display:flex; align-items:center; gap:6px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; margin:2px 0;
+  }
+  #infopanel .bar-label{ width:58px; flex-shrink:0; opacity:0.8; }
+  #infopanel .bar-track{
+    flex:1; height:6px; border-radius:3px;
+    background:rgba(43,29,20,0.18);
+    overflow:hidden;
+  }
+  #infopanel .bar-fill{ height:100%; border-radius:3px; }
+  #infopanel .bar-fill.skill{ background:var(--ember); }
+  #infopanel .bar-fill.need{ background:var(--moss); }
+  #infopanel .bar-fill.need.low{ background:var(--danger); }
+  #infopanel .section-label{
+    font-family:'Cinzel', serif; font-size:10px; font-weight:700;
+    letter-spacing:0.5px; text-transform:uppercase;
+    opacity:0.55; margin:8px 0 3px;
+  }
+
+  /* Colonist bar, center of the bottom cluster — scrolls horizontally instead
+     of overlapping neighbors once there are too many colonists to fit */
+  #colonistbar{
+    flex:1 1 auto;
+    min-width:0;
+    display:flex; gap:8px;
+    justify-content:center;
+    overflow-x:auto;
+    padding:2px 0 4px;
+  }
+  #colonistbar::-webkit-scrollbar{ height:4px; }
+  .colonist-card{
+    width:64px; flex-shrink:0; padding:6px 4px 5px;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    cursor:pointer;
+    transition:transform 0.1s ease;
+  }
+  .colonist-card:hover{ transform:translateY(-2px); }
+  .colonist-card.selected{
+    box-shadow:0 0 0 2px var(--ember-bright), 0 4px 14px rgba(0,0,0,0.45);
+  }
+  .colonist-avatar{
+    width:30px; height:30px; border-radius:50%;
+    border:2px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cinzel', serif; font-weight:700; font-size:12px;
+    color:#fff8ea;
+    text-shadow:0 1px 1px rgba(0,0,0,0.5);
+  }
+  .colonist-card .cname{
+    font-family:'EB Garamond', serif; font-size:11px;
+    text-align:center; line-height:1.1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:58px;
+  }
+  .colonist-card .cmood{
+    width:44px; height:4px; border-radius:2px;
+    background:rgba(43,29,20,0.18); overflow:hidden;
+  }
+  .colonist-card .cmood-fill{ height:100%; background:var(--moss); }
+  .colonist-card.breaking{
+    animation:pulse-red 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse-red{
+    0%, 100% { box-shadow:0 4px 14px rgba(0,0,0,0.45); }
+    50% { box-shadow:0 0 0 2px var(--danger), 0 4px 14px rgba(0,0,0,0.45); }
+  }
+  .break-badge{
+    position:absolute;
+    margin-left:14px; margin-top:-22px;
+    width:14px; height:14px; border-radius:50%;
+    background:var(--danger); color:#fff;
+    font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid var(--ink);
+  }
+
+  /* Build menu, right side of the bottom cluster, stacked above zoom controls */
+  #bottomright{
+    flex:0 0 auto;
+    display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+  }
+  #buildbar{
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #buildToggleBtn{
+    padding:9px 16px;
+    font-family:'Cinzel', serif; font-size:13px; font-weight:700;
+    letter-spacing:0.5px; text-transform:uppercase;
+    background:linear-gradient(180deg, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:6px;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #buildToggleBtn:active{ transform:translateY(1px); }
+  #buildmenu{
+    display:flex; flex-direction:column; gap:6px;
+    padding:10px; min-width:190px;
+  }
+  #buildmenu[hidden]{ display:none; }
+  .build-option{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding:7px 10px;
+    background:rgba(232,217,181,0.5);
+    border:1.5px solid var(--ink); border-radius:5px;
+    font-family:'EB Garamond', serif; color:var(--ink);
+    cursor:pointer; text-align:left;
+  }
+  .build-option:hover:not(:disabled){ background:rgba(232,217,181,0.9); }
+  .build-option.active{
+    background:var(--moss); color:var(--parchment);
+    box-shadow:0 0 0 2px var(--ember-bright);
+  }
+  .build-option:disabled{ opacity:0.4; cursor:not-allowed; }
+  .bo-name{ font-weight:600; font-size:13px; }
+  .bo-cost{
+    display:flex; align-items:center; gap:5px;
+    font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    white-space:nowrap;
+  }
+  .bo-cost .dot{ margin-left:6px; }
+  .bo-cost .dot:first-child{ margin-left:0; }
+  #buildStatus{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    color:var(--parchment-dark); opacity:0.9;
+    text-shadow:0 1px 2px rgba(0,0,0,0.8);
+    text-align:right; max-width:200px;
+  }
+
+  /* small action button used inside infopanel (e.g. Cancel & Refund) */
+  .mini-btn{
+    margin-top:8px; padding:6px 12px;
+    background:linear-gradient(180deg, var(--parchment), var(--parchment-dark));
+    border:1.5px solid var(--ink); border-radius:5px;
+    font-family:'Cinzel', serif; font-size:11px; font-weight:700;
+    letter-spacing:0.4px; text-transform:uppercase;
+    color:var(--danger); cursor:pointer;
+  }
+  .mini-btn:active{ transform:translateY(1px); }
+
+  /* Alerts banner, top-center below the hint */
+  #alerts{
+    position:absolute; top:38px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    z-index:6; pointer-events:none;
+  }
+  .alert-chip{
+    background:linear-gradient(180deg, #7a2e26, #5c211b);
+    border:1px solid #2b1d14;
+    color:#f4ecd8;
+    font-family:'EB Garamond', serif; font-size:12.5px;
+    padding:4px 12px; border-radius:5px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.5);
+  }
+
+  /* Narrow/mobile viewports: the bottom cluster is the tightest fit, so trim
+     it first — smaller cards, tighter panel, and drop the legend since terrain
+     colors are also readable from the tile-inspect panel. */
+  @media (max-width: 560px){
+    #legend{ display:none; }
+    #hint{ font-size:11px; max-width:78vw; white-space:normal; text-align:center; line-height:1.3; }
+    #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; }
+    #infopanel .bar-label{ width:48px; }
+    .colonist-card{ width:52px; }
+    .colonist-card .cname{ max-width:46px; font-size:10px; }
+    #buildmenu{ min-width:150px; padding:8px; }
+    .bo-name{ font-size:12px; }
+    #buildToggleBtn{ padding:7px 12px; font-size:11px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="world"></canvas>
+
+<div id="titlebar">
+  <div>
+    <h1>HEARTHBOUND</h1>
+    <div class="subtitle">a clearing in the wild wood</div>
+  </div>
+  <div id="resourcebar">
+    <div class="panel resource"><span class="dot wood"></span><span id="woodCount">0</span></div>
+    <div class="panel resource"><span class="dot stone"></span><span id="stoneCount">0</span></div>
+    <div class="panel resource"><span class="dot food"></span><span id="foodCount">0</span></div>
+  </div>
+</div>
+
+<div id="hint">drag to pan · scroll to zoom · click a colonist to select, then click ground to walk there</div>
+<div id="alerts"></div>
+
+<div id="legend" class="panel">
+  <div class="title">Terrain</div>
+  <div class="item"><span class="swatch" style="background:#5a7247"></span>Grass</div>
+  <div class="item"><span class="swatch" style="background:#2f4d28"></span>Forest</div>
+  <div class="item"><span class="swatch" style="background:#3f6b7a"></span>Water</div>
+  <div class="item"><span class="swatch" style="background:#8a8578"></span>Stone</div>
+  <div class="item"><span class="swatch" style="background:#a08454"></span>Dirt</div>
+  <div class="item"><span class="swatch" style="background:#d8c98a"></span>Sand</div>
+</div>
+
+<div id="savecontrols">
+  <button id="saveBtn">Save</button>
+  <button id="loadBtn">Load</button>
+  <span id="saveStatus"></span>
+</div>
+
+<div id="bottombar">
+  <div id="infopanel" class="panel">
+    <div class="title">Wilderness</div>
+    <div class="row">hover a tile to inspect</div>
+  </div>
+
+  <div id="colonistbar"></div>
+
+  <div id="bottomright">
+    <div id="buildbar">
+      <button id="buildToggleBtn" class="panel">🔨 Build</button>
+      <div id="buildmenu" class="panel" hidden></div>
+      <span id="buildStatus"></span>
+    </div>
+    <div id="zoomcontrols">
+      <button id="zoomIn">+</button>
+      <button id="zoomOut">–</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   === PERSISTENCE: IndexedDB wrapper (used by every phase after this) ===
+   ========================================================= */
+const HearthboundDB = (() => {
+  const DB_NAME = 'hearthbound-db';
+  const DB_VERSION = 1;
+  let dbPromise = null;
+
+  function open(){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains('saves')) db.createObjectStore('saves');
+        if(!db.objectStoreNames.contains('meta'))  db.createObjectStore('meta');
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  function tx(storeName, mode){
+    return open().then(db => db.transaction(storeName, mode).objectStore(storeName));
+  }
+
+  async function saveGame(slotId, state){
+    const store = await tx('saves', 'readwrite');
+    await reqToPromise(store.put(state, slotId));
+    const metaStore = await tx('meta', 'readwrite');
+    await reqToPromise(metaStore.put({
+      name: state.name || slotId,
+      timestamp: Date.now(),
+      tick: state.tick || 0,
+      colonistCount: (state.colonists || []).length,
+      settlementTier: state.settlementTier || 'hamlet'
+    }, slotId));
+    return true;
+  }
+
+  async function loadGame(slotId){
+    const store = await tx('saves', 'readonly');
+    return reqToPromise(store.get(slotId));
+  }
+
+  async function deleteSave(slotId){
+    const store = await tx('saves', 'readwrite');
+    await reqToPromise(store.delete(slotId));
+    const metaStore = await tx('meta', 'readwrite');
+    await reqToPromise(metaStore.delete(slotId));
+    return true;
+  }
+
+  async function listSaves(){
+    const metaStore = await tx('meta', 'readonly');
+    const keysReq = metaStore.getAllKeys();
+    const valsReq = metaStore.getAll();
+    const keys = await reqToPromise(keysReq);
+    const vals = await reqToPromise(valsReq);
+    return keys.map((k, i) => ({ slotId: k, ...vals[i] }));
+  }
+
+  function reqToPromise(req){
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  return { saveGame, loadGame, deleteSave, listSaves };
+})();
+
+/* =========================================================
+   === CONFIG ===
+   ========================================================= */
+const CONFIG = {
+  MAP_W: 80,
+  MAP_H: 80,
+  TILE: 32,          // base tile size in px before zoom
+  MIN_ZOOM: 0.4,
+  MAX_ZOOM: 2.5,
+  ZOOM_STEP: 0.1,
+  SEED: 1337
+};
+
+const TERRAIN = {
+  GRASS:  { id:'grass',  color:'#5a7247', colorAlt:'#63804e', walkable:true,  buildable:true  },
+  FOREST: { id:'forest', color:'#2f4d28', colorAlt:'#365a2e', walkable:true,  buildable:false },
+  WATER:  { id:'water',  color:'#3f6b7a', colorAlt:'#396273', walkable:false, buildable:false },
+  STONE:  { id:'stone',  color:'#8a8578', colorAlt:'#8f8a7d', walkable:true,  buildable:false },
+  DIRT:   { id:'dirt',   color:'#a08454', colorAlt:'#a88c5c', walkable:true,  buildable:true  },
+  SAND:   { id:'sand',   color:'#d8c98a', colorAlt:'#ddd090', walkable:true,  buildable:true  }
+};
+
+/* =========================================================
+   === SEEDED PSEUDO-RANDOM (deterministic map generation) ===
+   ========================================================= */
+function makeRNG(seed){
+  let s = seed >>> 0;
+  return function(){
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/* Cheap smooth "noise": layered sine fields + a light random jitter,
+   averaged, then smoothed with a small blur pass. No external libs. */
+function generateHeightfield(w, h, seed){
+  const rng = makeRNG(seed);
+  const freqA = { x: rng()*0.05+0.02, y: rng()*0.05+0.02, phase: rng()*Math.PI*2 };
+  const freqB = { x: rng()*0.12+0.06, y: rng()*0.12+0.06, phase: rng()*Math.PI*2 };
+  const freqC = { x: rng()*0.25+0.15, y: rng()*0.25+0.15, phase: rng()*Math.PI*2 };
+
+  let field = new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      let v = 0;
+      v += Math.sin(x*freqA.x + freqA.phase) * Math.cos(y*freqA.y + freqA.phase) * 0.55;
+      v += Math.sin(x*freqB.x + freqB.phase) * Math.cos(y*freqB.y + freqB.phase) * 0.30;
+      v += Math.sin(x*freqC.x + freqC.phase) * Math.cos(y*freqC.y + freqC.phase) * 0.15;
+      v += (rng()-0.5) * 0.12;
+      field[y*w+x] = v;
+    }
+  }
+  // simple box blur smoothing pass for nicer blobs
+  const smoothed = new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      let sum=0, count=0;
+      for(let dy=-1; dy<=1; dy++){
+        for(let dx=-1; dx<=1; dx++){
+          const nx=x+dx, ny=y+dy;
+          if(nx>=0 && nx<w && ny>=0 && ny<h){ sum += field[ny*w+nx]; count++; }
+        }
+      }
+      smoothed[y*w+x] = sum/count;
+    }
+  }
+  return smoothed;
+}
+
+/* =========================================================
+   === MAP GENERATION ===
+   ========================================================= */
+function generateMap(){
+  const w = CONFIG.MAP_W, h = CONFIG.MAP_H;
+  const elevation = generateHeightfield(w, h, CONFIG.SEED);
+  const moisture  = generateHeightfield(w, h, CONFIG.SEED + 9999);
+
+  const tiles = new Array(w*h);
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const e = elevation[y*w+x];
+      const m = moisture[y*w+x];
+      let terrain;
+      if(e < -0.28) terrain = TERRAIN.WATER;
+      else if(e < -0.18) terrain = TERRAIN.SAND;
+      else if(e > 0.32) terrain = TERRAIN.STONE;
+      else if(m > 0.12) terrain = TERRAIN.FOREST;
+      else if(m < -0.22) terrain = TERRAIN.DIRT;
+      else terrain = TERRAIN.GRASS;
+
+      // deterministic per-tile variant flag for subtle color dithering
+      const variant = ((x*928371 + y*123457 + CONFIG.SEED) % 5) === 0;
+
+      tiles[y*w+x] = { terrain, variant, x, y };
+    }
+  }
+  return { w, h, tiles };
+}
+
+const MAP = generateMap();
+
+/* =========================================================
+   === BUILDINGS & RESOURCES ===
+   Defined before colonist spawn since isWalkable() (used during
+   spawn placement) needs to know about building occupancy.
+   ========================================================= */
+const BUILDING_TYPES = {
+  sleepingroll: { id:'sleepingroll', name:'Sleeping Roll', cost:{wood:2,stone:0},  workRequired:8,  blocksMovement:false, comfortBonus:3, color:'#7a5230', desc:'A bedroll on the ground. Better than bare earth, but not by much.' },
+  hut:          { id:'hut',          name:'Hut',           cost:{wood:15,stone:5}, workRequired:40, blocksMovement:true,  comfortBonus:6, color:'#8a6a3f', desc:'A proper shelter. Strong comfort recovery for whoever rests here.' },
+  campfire:     { id:'campfire',     name:'Campfire',      cost:{wood:5,stone:0},  workRequired:15, blocksMovement:true,  joyRadius:3,    color:'#c97a3c', desc:'Warmth and a gathering point. Lifts spirits for those nearby.' },
+  storagepile:  { id:'storagepile',  name:'Storage Pile',  cost:{wood:3,stone:0},  workRequired:12, blocksMovement:true,  color:'#6b5636', desc:'A place to stack goods. Matters more once real hauling arrives.' },
+  farmplot:     { id:'farmplot',     name:'Farm Plot',     cost:{wood:2,stone:0},  workRequired:10, blocksMovement:false, color:'#7c6a3a', desc:'Tilled earth, ready for crops once true farming arrives.' }
+};
+
+const resources = { wood: 20, stone: 10 }; // starting supplies — the settlers' cart
+const buildings = [];
+const buildingGrid = new Map(); // "x,y" -> building, for O(1) occupancy checks
+let buildingIdCounter = 0;
+
+function updateResourceBar(){
+  const woodEl = document.getElementById('woodCount');
+  const stoneEl = document.getElementById('stoneCount');
+  if(woodEl) woodEl.textContent = Math.floor(resources.wood);
+  if(stoneEl) stoneEl.textContent = Math.floor(resources.stone);
+}
+
+/* =========================================================
+   === CONSTRUCTION: placement, cancel/refund, job assignment ===
+   Phase 4. Delivery model: materials are deducted from the
+   shared pool the instant a blueprint is placed (delivered ==
+   required immediately) — a stand-in for real hauling, which
+   arrives as its own job type in Phase 5. The Building schema
+   already tracks required vs delivered separately so that
+   swap doesn't touch this section again.
+   ========================================================= */
+let placementMode = null; // a BUILDING_TYPES key while the player is placing, else null
+
+function canPlaceBuilding(tx, ty){
+  if(tx<0||tx>=MAP.w||ty<0||ty>=MAP.h) return false;
+  const tile = MAP.tiles[ty*MAP.w+tx];
+  if(!tile.terrain.buildable) return false;
+  if(buildingGrid.has(tx+','+ty)) return false;
+  return true;
+}
+
+function tryPlaceBuilding(typeId, tx, ty){
+  const def = BUILDING_TYPES[typeId];
+  if(!def) return;
+  if(!canPlaceBuilding(tx, ty)){ flashBuildStatus('can\'t build there'); return; }
+  if(resources.wood < def.cost.wood || resources.stone < def.cost.stone){ flashBuildStatus('not enough resources'); return; }
+
+  resources.wood -= def.cost.wood;
+  resources.stone -= def.cost.stone;
+
+  const b = {
+    id: buildingIdCounter++,
+    type: def.id,
+    tx, ty,
+    isComplete: false,
+    workRequired: def.workRequired,
+    workDone: 0,
+    required: { wood: def.cost.wood, stone: def.cost.stone },
+    delivered: { wood: def.cost.wood, stone: def.cost.stone }, // instant stub, see note above
+    blocksMovement: def.blocksMovement
+  };
+  buildings.push(b);
+  buildingGrid.set(tx+','+ty, b);
+
+  updateResourceBar();
+  renderBuildMenu();
+  flashBuildStatus(`${def.name} blueprint placed`);
+  if(selectedTile && selectedTile.x===tx && selectedTile.y===ty) updateInfoPanel();
+}
+
+function cancelBuilding(b){
+  const WASTE = 0.25; // 25% of delivered materials lost on cancel
+  resources.wood += Math.floor(b.delivered.wood * (1-WASTE));
+  resources.stone += Math.floor(b.delivered.stone * (1-WASTE));
+  buildingGrid.delete(b.tx+','+b.ty);
+  const idx = buildings.indexOf(b);
+  if(idx>=0) buildings.splice(idx,1);
+
+  for(const c of colonists){
+    if(c.buildJob === b){ c.buildJob=null; c.state='idle'; c.path=[]; }
+    if(c.pendingBuildJob === b){ c.pendingBuildJob=null; }
+  }
+
+  updateResourceBar();
+  renderBuildMenu();
+  flashBuildStatus('cancelled — materials partly refunded');
+}
+
+/* nearest walkable tile a colonist can stand on to work the building
+   (the building's own tile if it doesn't block movement, else an
+   adjacent tile) */
+function findBuildApproachTile(b){
+  if(isWalkable(b.tx, b.ty)) return { x:b.tx, y:b.ty };
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  for(const [dx,dy] of dirs){
+    const nx=b.tx+dx, ny=b.ty+dy;
+    if(isWalkable(nx,ny)) return { x:nx, y:ny };
+  }
+  return null;
+}
+
+/* player-issued build order — walk to the site (if needed), then work it */
+function commandColonistToBuild(colonist, building){
+  if(colonist.breaking || building.isComplete) return;
+  colonist.foraging = false;
+  const approach = findBuildApproachTile(building);
+  if(!approach) return;
+  const startTx = Math.floor(colonist.wx/CONFIG.TILE), startTy = Math.floor(colonist.wy/CONFIG.TILE);
+  if(startTx===approach.x && startTy===approach.y){
+    colonist.buildJob = building;
+    colonist.pendingBuildJob = null;
+    colonist.state = 'building';
+    colonist.path = [];
+  } else {
+    const path = pathColonistTo(colonist, approach.x, approach.y);
+    if(path){
+      colonist.pendingBuildJob = building;
+      colonist.buildJob = null;
+    }
+  }
+}
+
+function updateColonistBuilding(c, dt){
+  if(c.state !== 'building') return;
+  const b = c.buildJob;
+  if(!b || b.isComplete || !buildings.includes(b)){
+    c.state = 'idle'; c.buildJob = null; return;
+  }
+  const rate = 0.8 + c.skills.building * 0.12; // work units/sec, scaled by building skill
+  b.workDone = Math.min(b.workRequired, b.workDone + rate*dt);
+  if(b.workDone >= b.workRequired){
+    b.isComplete = true;
+    c.state = 'idle';
+    c.buildJob = null;
+  }
+}
+
+/* how much comfort recovery an idle colonist gets from the best nearby
+   completed shelter (adjacent or standing on it) */
+function nearestShelterBonus(c){
+  const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
+  let best = 0;
+  for(const b of buildings){
+    if(!b.isComplete) continue;
+    const def = BUILDING_TYPES[b.type];
+    if(!def.comfortBonus) continue;
+    const d = Math.max(Math.abs(b.tx-ctx0), Math.abs(b.ty-cty0));
+    if(d<=1 && def.comfortBonus>best) best = def.comfortBonus;
+  }
+  return best;
+}
+
+/* whether a colonist is within a completed campfire's joy radius */
+function nearCampfireJoy(c){
+  const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
+  for(const b of buildings){
+    if(!b.isComplete) continue;
+    const def = BUILDING_TYPES[b.type];
+    if(!def.joyRadius) continue;
+    if(Math.hypot(b.tx-ctx0, b.ty-cty0) <= def.joyRadius) return true;
+  }
+  return false;
+}
+
+/* =========================================================
+   === BUILD MENU (bottom-right panel) ===
+   ========================================================= */
+function renderBuildMenu(){
+  const menu = document.getElementById('buildmenu');
+  menu.innerHTML = Object.values(BUILDING_TYPES).map(def=>{
+    const afford = resources.wood>=def.cost.wood && resources.stone>=def.cost.stone;
+    const active = placementMode===def.id;
+    const costHtml = `${def.cost.wood?`<span class="dot wood"></span>${def.cost.wood}`:''}${def.cost.stone?`<span class="dot stone"></span>${def.cost.stone}`:''}`;
+    return `<button class="build-option${active?' active':''}" data-type="${def.id}" ${afford?'':'disabled'} title="${def.desc}">
+      <span class="bo-name">${def.name}</span>
+      <span class="bo-cost">${costHtml}</span>
+    </button>`;
+  }).join('');
+  menu.querySelectorAll('.build-option').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.disabled) return;
+      const type = btn.dataset.type;
+      placementMode = (placementMode===type) ? null : type;
+      renderBuildMenu();
+      updateHint();
+    });
+  });
+}
+
+const buildStatusEl = document.getElementById('buildStatus');
+function flashBuildStatus(msg){
+  buildStatusEl.textContent = msg;
+  setTimeout(()=>{ if(buildStatusEl.textContent === msg) buildStatusEl.textContent = ''; }, 2200);
+}
+
+document.getElementById('buildToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('buildmenu');
+  menu.hidden = !menu.hidden;
+  if(!menu.hidden) renderBuildMenu();
+});
+
+function updateHint(){
+  const hint = document.getElementById('hint');
+  if(placementMode){
+    const def = BUILDING_TYPES[placementMode];
+    hint.textContent = `placing ${def.name} — click a valid tile to build · right-click or Esc to cancel`;
+  } else {
+    hint.textContent = 'drag to pan · scroll to zoom · click a colonist, then click ground to walk or a blueprint to build';
+  }
+}
+
+/* =========================================================
+   === CAMERA ===
+   ========================================================= */
+const camera = {
+  x: (MAP.w * CONFIG.TILE) / 2,   // world-space focus point (center of screen)
+  y: (MAP.h * CONFIG.TILE) / 2,
+  zoom: 1
+};
+
+/* =========================================================
+   === CANVAS SETUP ===
+   ========================================================= */
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas(){
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/* world <-> screen conversion */
+function worldToScreen(wx, wy){
+  const t = CONFIG.TILE * camera.zoom;
+  const sx = (wx - camera.x) * camera.zoom + (canvas.width/devicePixelRatio)/2;
+  const sy = (wy - camera.y) * camera.zoom + (canvas.height/devicePixelRatio)/2;
+  return { x: sx, y: sy };
+}
+function screenToWorld(sx, sy){
+  const wx = (sx - (canvas.width/devicePixelRatio)/2) / camera.zoom + camera.x;
+  const wy = (sy - (canvas.height/devicePixelRatio)/2) / camera.zoom + camera.y;
+  return { x: wx, y: wy };
+}
+function screenToTile(sx, sy){
+  const w = screenToWorld(sx, sy);
+  return { tx: Math.floor(w.x / CONFIG.TILE), ty: Math.floor(w.y / CONFIG.TILE) };
+}
+
+/* =========================================================
+   === COLONIST DATA (traits, skills, names) ===
+   ========================================================= */
+const SKILL_LIST = ['farming','mining','building','crafting','combat','medicine','social','cooking'];
+
+const TRAIT_POOL = [
+  { id:'hardworker', name:'Hard Worker', desc:'Works faster than most.' },
+  { id:'lazy',        name:'Lazy',        desc:'Tires of labor quickly.' },
+  { id:'greenthumb',  name:'Green Thumb', desc:'A natural at tending crops.' },
+  { id:'coward',      name:'Coward',      desc:'Flees at the first sign of danger.' },
+  { id:'brawler',     name:'Brawler',     desc:'Never backs down from a fight.' },
+  { id:'quick',       name:'Quick',       desc:'Light on their feet.' },
+  { id:'sickly',      name:'Sickly',      desc:'Prone to illness.' },
+  { id:'cheerful',    name:'Cheerful',    desc:'Hard to bring down.' },
+  { id:'grumpy',      name:'Grumpy',      desc:'Easily irritated.' },
+  { id:'nightowl',    name:'Night Owl',   desc:'Thrives after dark.' }
+];
+
+const NAME_POOL = [
+  'Aldric','Brenna','Cedric','Dahlia','Edwin','Freya','Gareth','Hilda',
+  'Ivo','Junia','Kestrel','Liora','Merrin','Norah','Osric','Perrin',
+  'Quenna','Roswen','Sela','Torvin'
+];
+
+const COLONIST_COLORS = ['#c97a3c','#5a7247','#8b3a2f','#3f6b7a','#a08454','#7a5a94'];
+
+let colonistRng = makeRNG(CONFIG.SEED + 42);
+function pick(arr){ return arr[Math.floor(colonistRng()*arr.length)]; }
+function pickUnique(arr, count){
+  const pool = arr.slice();
+  const out = [];
+  for(let i=0;i<count && pool.length;i++){
+    const idx = Math.floor(colonistRng()*pool.length);
+    out.push(pool.splice(idx,1)[0]);
+  }
+  return out;
+}
+
+let colonistIdCounter = 0;
+function createColonist(tx, ty, name, colorIdx){
+  const skills = {};
+  SKILL_LIST.forEach(s => { skills[s] = 2 + Math.floor(colonistRng()*11); }); // 2-12 starting range
+  const traits = pickUnique(TRAIT_POOL, 2);
+  return {
+    id: colonistIdCounter++,
+    name,
+    color: COLONIST_COLORS[colorIdx % COLONIST_COLORS.length],
+    tx, ty,                       // last settled tile
+    wx: tx*CONFIG.TILE + CONFIG.TILE/2,   // world pixel position (float, for smooth motion)
+    wy: ty*CONFIG.TILE + CONFIG.TILE/2,
+    speed: 2.2,                   // tiles per second
+    path: [],
+    state: 'idle',                // idle | walking
+    foraging: false,
+    forageCooldown: colonistRng()*10,
+    breaking: null,                // { type: 'wander'|'sulk', timer } while in a mental break
+    buildJob: null,                // Building currently being worked (state === 'building')
+    pendingBuildJob: null,         // Building to start once a walk-to-site path completes
+    skills,
+    traits,
+    needs: {
+      hunger: 70 + Math.floor(colonistRng()*20),
+      rest:   70 + Math.floor(colonistRng()*20),
+      comfort:60 + Math.floor(colonistRng()*20),
+      social: 60 + Math.floor(colonistRng()*20),
+      joy:    60 + Math.floor(colonistRng()*20)
+    },
+    mood: 75,
+    health: 100
+  };
+}
+
+function isWalkable(x, y){
+  if(x<0||x>=MAP.w||y<0||y>=MAP.h) return false;
+  if(!MAP.tiles[y*MAP.w+x].terrain.walkable) return false;
+  const b = buildingGrid.get(x+','+y);
+  if(b && b.blocksMovement) return false;
+  return true;
+}
+
+/* find nearest walkable tile to a center point via expanding ring search */
+function findNearestWalkable(cx, cy){
+  if(isWalkable(cx,cy)) return { x:cx, y:cy };
+  for(let r=1; r<40; r++){
+    for(let dx=-r; dx<=r; dx++){
+      for(let dy=-r; dy<=r; dy++){
+        if(Math.max(Math.abs(dx),Math.abs(dy)) !== r) continue;
+        const x=cx+dx, y=cy+dy;
+        if(isWalkable(x,y)) return { x, y };
+      }
+    }
+  }
+  return { x:cx, y:cy };
+}
+
+/* =========================================================
+   === PATHFINDING (A*, 8-directional, no corner-cutting) ===
+   NOTE: uses a linear scan for the lowest-f node, fine for
+   occasional player-issued moves on an 80x80 map. If colonist
+   counts/path calls grow heavy later, swap in a binary heap.
+   ========================================================= */
+function findPath(startX, startY, endX, endY){
+  if(!isWalkable(endX, endY)) return null;
+  if(startX===endX && startY===endY) return [];
+
+  const key = (x,y) => y*MAP.w + x;
+  const open = new Map();
+  const closed = new Set();
+  const h0 = Math.hypot(endX-startX, endY-startY);
+  const startNode = { x:startX, y:startY, g:0, h:h0, f:h0, parent:null };
+  open.set(key(startX,startY), startNode);
+
+  const neighbors = [
+    {dx:1,dy:0,cost:1},{dx:-1,dy:0,cost:1},{dx:0,dy:1,cost:1},{dx:0,dy:-1,cost:1},
+    {dx:1,dy:1,cost:1.414},{dx:1,dy:-1,cost:1.414},{dx:-1,dy:1,cost:1.414},{dx:-1,dy:-1,cost:1.414}
+  ];
+
+  let iterations = 0;
+  while(open.size > 0 && iterations++ < 5000){
+    let current = null, currentKey = null;
+    for(const [k, n] of open){
+      if(!current || n.f < current.f){ current = n; currentKey = k; }
+    }
+    if(current.x===endX && current.y===endY){
+      const path = [];
+      let n = current;
+      while(n.parent){ path.unshift({x:n.x, y:n.y}); n = n.parent; }
+      return path;
+    }
+    open.delete(currentKey);
+    closed.add(currentKey);
+
+    for(const nb of neighbors){
+      const nx = current.x+nb.dx, ny = current.y+nb.dy;
+      if(!isWalkable(nx, ny)) continue;
+      if(nb.dx!==0 && nb.dy!==0){
+        if(!isWalkable(current.x+nb.dx, current.y) || !isWalkable(current.x, current.y+nb.dy)) continue;
+      }
+      const nk = key(nx, ny);
+      if(closed.has(nk)) continue;
+      const g = current.g + nb.cost;
+      let node = open.get(nk);
+      if(!node || g < node.g){
+        const hh = Math.hypot(endX-nx, endY-ny);
+        node = { x:nx, y:ny, g, h:hh, f:g+hh, parent:current };
+        open.set(nk, node);
+      }
+    }
+  }
+  return null; // no path found within search budget
+}
+
+/* =========================================================
+   === COLONISTS: spawn starting settlers ===
+   ========================================================= */
+const colonists = [];
+{
+  const center = findNearestWalkable(Math.floor(MAP.w/2), Math.floor(MAP.h/2));
+  const startNames = pickUnique(NAME_POOL, 3);
+  for(let i=0;i<3;i++){
+    const spot = findNearestWalkable(center.x + (i-1)*2, center.y + (i%2===0?1:-1));
+    colonists.push(createColonist(spot.x, spot.y, startNames[i], i));
+  }
+}
+let selectedColonist = null;
+
+/* move camera to focus on a world position */
+function focusCameraOn(wx, wy){
+  camera.x = wx; camera.y = wy;
+  clampCamera();
+}
+
+/* player-issued walk order — refused while a colonist is mid mental-break */
+function commandColonistTo(colonist, tx, ty){
+  if(colonist.breaking) return;
+  colonist.foraging = false; // a player order cancels any in-progress forage trip
+  pathColonistTo(colonist, tx, ty);
+}
+
+/* internal pathing helper used by both player orders and AI-driven behavior (forage/wander) */
+function pathColonistTo(colonist, tx, ty){
+  const startTx = Math.floor(colonist.wx / CONFIG.TILE);
+  const startTy = Math.floor(colonist.wy / CONFIG.TILE);
+  const path = findPath(startTx, startTy, tx, ty);
+  if(path && path.length){
+    colonist.path = path;
+    colonist.state = 'walking';
+  }
+  return path;
+}
+
+function randomNearbyWalkable(c, radius){
+  const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
+  for(let attempt=0; attempt<12; attempt++){
+    const ang = colonistRng()*Math.PI*2;
+    const dist = 2 + colonistRng()*radius;
+    const nx = Math.round(ctx0 + Math.cos(ang)*dist);
+    const ny = Math.round(cty0 + Math.sin(ang)*dist);
+    if(isWalkable(nx, ny)) return { x:nx, y:ny };
+  }
+  return null;
+}
+
+/* =========================================================
+   === NEEDS & MOOD ===
+   Rates are per real second for now (dt-driven). Once Phase 7
+   introduces a proper game-time tick, these will be re-tuned
+   against in-game hours instead of wall-clock seconds.
+   ========================================================= */
+const NEED_DECAY = { hunger:0.35, rest:0.22, comfort:0.10, social:0.10, joy:0.15 };
+const SOCIAL_RADIUS_TILES = 4;
+const MOOD_BREAK_THRESHOLD = 40; // below this, mental breaks become possible
+
+function moodLabel(c){
+  if(c.breaking) return c.breaking.type === 'wander' ? 'Mental Break — Wandering' : 'Mental Break — Sulking';
+  if(c.mood >= 70) return 'Content';
+  if(c.mood >= 50) return 'Fine';
+  if(c.mood >= 30) return 'Uneasy';
+  return 'Miserable';
+}
+
+function startMentalBreak(c){
+  const proneToSulk = c.traits.some(t => t.id==='grumpy' || t.id==='coward');
+  const type = (proneToSulk && colonistRng() < 0.6) ? 'sulk' : 'wander';
+  c.breaking = { type, timer: 8 + colonistRng()*8 };
+  c.foraging = false;
+  c.path = [];
+  if(type === 'wander'){
+    const spot = randomNearbyWalkable(c, 6);
+    if(spot) pathColonistTo(c, spot.x, spot.y);
+  } else {
+    c.state = 'idle';
+  }
+}
+
+function updateColonistNeeds(c, dt){
+  // --- decay ---
+  c.needs.hunger = Math.max(0, c.needs.hunger - NEED_DECAY.hunger*dt);
+  const restDecay = (c.state === 'walking' || c.state === 'building') ? NEED_DECAY.rest*1.4 : NEED_DECAY.rest*0.3;
+  c.needs.rest = Math.max(0, c.needs.rest - restDecay*dt);
+
+  // comfort: Phase 4 replaces the old floor-at-20 placeholder with real shelter.
+  // Idle next to a completed sleeping roll/hut recovers comfort at a rate scaled
+  // by that building's comfortBonus; with no shelter nearby it decays and floors
+  // lower than before (10, not 20) — sleeping fully in the open is now worse,
+  // since there's an actual fix available.
+  const shelterBonus = (c.state === 'idle' && !c.breaking) ? nearestShelterBonus(c) : 0;
+  if(shelterBonus > 0){
+    c.needs.comfort = Math.min(100, c.needs.comfort + shelterBonus*0.6*dt);
+  } else {
+    c.needs.comfort = Math.max(10, c.needs.comfort - NEED_DECAY.comfort*dt);
+  }
+
+  // social: rises near another colonist, decays alone
+  let nearOther = false;
+  for(const other of colonists){
+    if(other === c) continue;
+    const d = Math.hypot(other.wx-c.wx, other.wy-c.wy) / CONFIG.TILE;
+    if(d <= SOCIAL_RADIUS_TILES){ nearOther = true; break; }
+  }
+  if(nearOther){
+    c.needs.social = Math.min(100, c.needs.social + 0.4*dt);
+    c.needs.joy = Math.min(100, c.needs.joy + 0.05*dt);
+  } else {
+    c.needs.social = Math.max(0, c.needs.social - NEED_DECAY.social*dt);
+  }
+  c.needs.joy = Math.max(0, c.needs.joy - NEED_DECAY.joy*dt);
+  // a completed campfire lifts spirits for anyone within its joy radius
+  if(nearCampfireJoy(c)){
+    c.needs.joy = Math.min(100, c.needs.joy + 0.25*dt);
+  }
+
+  // idle rest recovery — resting without a proper bed, slow
+  if(c.state === 'idle' && !c.breaking){
+    c.needs.rest = Math.min(100, c.needs.rest + 0.6*dt);
+  }
+
+  // foraging: a stand-in food source until the real farming/cooking economy (Phase 6) exists
+  if(!c.breaking){
+    c.forageCooldown -= dt;
+    if(c.state === 'idle' && !c.foraging && c.needs.hunger < 55 && c.forageCooldown <= 0){
+      const spot = randomNearbyWalkable(c, 5);
+      if(spot && pathColonistTo(c, spot.x, spot.y)){
+        c.foraging = true;
+      }
+      c.forageCooldown = 12 + colonistRng()*8;
+    }
+    if(c.foraging && c.state === 'idle' && c.path.length === 0){
+      c.needs.hunger = Math.min(100, c.needs.hunger + 22);
+      c.needs.joy = Math.min(100, c.needs.joy + 3);
+      c.foraging = false;
+    }
+  }
+
+  // --- mood: weighted needs + trait modifiers, smoothed toward target ---
+  let target = c.needs.hunger*0.28 + c.needs.rest*0.24 + c.needs.comfort*0.16
+             + c.needs.social*0.14 + c.needs.joy*0.18;
+  if(c.traits.some(t => t.id==='cheerful')) target += 8;
+  if(c.traits.some(t => t.id==='grumpy'))   target -= 8;
+  if(c.traits.some(t => t.id==='sickly'))   target -= 4;
+  target = Math.max(0, Math.min(100, target));
+  c.mood += (target - c.mood) * Math.min(1, dt*0.5);
+
+  // --- mental breaks ---
+  if(c.breaking){
+    c.breaking.timer -= dt;
+    if(c.breaking.type === 'wander' && c.state === 'idle' && c.path.length === 0){
+      const spot = randomNearbyWalkable(c, 6);
+      if(spot) pathColonistTo(c, spot.x, spot.y);
+    }
+    if(c.breaking.timer <= 0){
+      c.breaking = null;
+      c.mood = Math.min(100, c.mood + 15); // venting brings some relief
+      c.path = [];
+      c.state = 'idle';
+    }
+  } else if(c.mood < MOOD_BREAK_THRESHOLD){
+    const riskFactor = (MOOD_BREAK_THRESHOLD - c.mood) / MOOD_BREAK_THRESHOLD; // 0..1
+    const chancePerSecond = riskFactor * riskFactor * 0.05; // up to 5%/s at mood 0
+    if(colonistRng() < chancePerSecond * dt) startMentalBreak(c);
+  }
+}
+
+/* =========================================================
+   === COLONIST UPDATE (movement + needs, run every frame) ===
+   ========================================================= */
+function updateColonistMovement(c, dt){
+  if(c.state === 'walking' && c.path.length){
+    const target = c.path[0];
+    const tpx = target.x*CONFIG.TILE + CONFIG.TILE/2;
+    const tpy = target.y*CONFIG.TILE + CONFIG.TILE/2;
+    const dx = tpx - c.wx, dy = tpy - c.wy;
+    const dist = Math.hypot(dx, dy);
+    const stepPx = c.speed * CONFIG.TILE * dt;
+    if(stepPx >= dist || dist < 0.5){
+      c.wx = tpx; c.wy = tpy;
+      c.tx = target.x; c.ty = target.y;
+      c.path.shift();
+      if(c.path.length === 0){
+        if(c.pendingBuildJob && !c.pendingBuildJob.isComplete && buildings.includes(c.pendingBuildJob)){
+          c.buildJob = c.pendingBuildJob;
+          c.pendingBuildJob = null;
+          c.state = 'building';
+        } else {
+          c.pendingBuildJob = null;
+          c.state = 'idle';
+        }
+      }
+    } else {
+      c.wx += (dx/dist) * stepPx;
+      c.wy += (dy/dist) * stepPx;
+    }
+  }
+}
+
+function updateColonists(dt){
+  for(const c of colonists){
+    updateColonistMovement(c, dt);
+    updateColonistBuilding(c, dt);
+    updateColonistNeeds(c, dt);
+  }
+}
+
+/* =========================================================
+   === INPUT: pan (drag) + zoom (wheel) + tile select ===
+   ========================================================= */
+let isDragging = false;
+let dragStart = { x:0, y:0 };
+let cameraStart = { x:0, y:0 };
+let dragMoved = false;
+let hoveredTile = null;
+let selectedTile = null;
+
+canvas.addEventListener('mousedown', (e)=>{
+  isDragging = true;
+  dragMoved = false;
+  canvas.classList.add('dragging');
+  dragStart.x = e.clientX; dragStart.y = e.clientY;
+  cameraStart.x = camera.x; cameraStart.y = camera.y;
+});
+
+window.addEventListener('mousemove', (e)=>{
+  if(isDragging){
+    const dx = (e.clientX - dragStart.x) / camera.zoom;
+    const dy = (e.clientY - dragStart.y) / camera.zoom;
+    if(Math.abs(e.clientX-dragStart.x) > 3 || Math.abs(e.clientY-dragStart.y) > 3) dragMoved = true;
+    camera.x = cameraStart.x - dx;
+    camera.y = cameraStart.y - dy;
+    clampCamera();
+  }
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const { tx, ty } = screenToTile(sx, sy);
+  if(tx>=0 && tx<MAP.w && ty>=0 && ty<MAP.h){
+    hoveredTile = MAP.tiles[ty*MAP.w+tx];
+  } else {
+    hoveredTile = null;
+  }
+  updateInfoPanel();
+});
+
+window.addEventListener('mouseup', ()=>{
+  isDragging = false;
+  canvas.classList.remove('dragging');
+});
+
+canvas.addEventListener('click', (e)=>{
+  if(dragMoved) return; // was a drag, not a click
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const { tx, ty } = screenToTile(sx, sy);
+  if(tx<0 || tx>=MAP.w || ty<0 || ty>=MAP.h) return;
+
+  if(placementMode){
+    tryPlaceBuilding(placementMode, tx, ty);
+    return;
+  }
+
+  const clickedColonist = getColonistAtScreen(sx, sy);
+  if(clickedColonist){
+    selectedColonist = clickedColonist;
+    selectedTile = null;
+    updateInfoPanel();
+    renderColonistBar();
+    return;
+  }
+
+  const buildingHere = buildingGrid.get(tx+','+ty);
+  if(selectedColonist && buildingHere && !buildingHere.isComplete){
+    commandColonistToBuild(selectedColonist, buildingHere);
+    updateInfoPanel();
+    return;
+  }
+
+  if(selectedColonist){
+    commandColonistTo(selectedColonist, tx, ty);
+    updateInfoPanel();
+    return;
+  }
+
+  selectedTile = MAP.tiles[ty*MAP.w+tx];
+  updateInfoPanel();
+});
+
+// right-click cancels an in-progress placement without placing anything
+canvas.addEventListener('contextmenu', (e)=>{
+  e.preventDefault();
+  if(placementMode){
+    placementMode = null;
+    renderBuildMenu();
+    updateHint();
+  }
+});
+
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && placementMode){
+    placementMode = null;
+    document.getElementById('buildmenu').hidden = true;
+    renderBuildMenu();
+    updateHint();
+  }
+});
+
+function getColonistAtScreen(sx, sy){
+  const hitRadius = Math.max(10, CONFIG.TILE * camera.zoom * 0.4);
+  let closest = null, closestDist = Infinity;
+  for(const c of colonists){
+    const s = worldToScreen(c.wx, c.wy);
+    const d = Math.hypot(s.x - sx, s.y - sy);
+    if(d < hitRadius && d < closestDist){ closest = c; closestDist = d; }
+  }
+  return closest;
+}
+
+canvas.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const dir = e.deltaY > 0 ? -1 : 1;
+  setZoom(camera.zoom + dir * CONFIG.ZOOM_STEP);
+}, { passive:false });
+
+document.getElementById('zoomIn').addEventListener('click', ()=> setZoom(camera.zoom + CONFIG.ZOOM_STEP));
+document.getElementById('zoomOut').addEventListener('click', ()=> setZoom(camera.zoom - CONFIG.ZOOM_STEP));
+
+function setZoom(z){
+  camera.zoom = Math.max(CONFIG.MIN_ZOOM, Math.min(CONFIG.MAX_ZOOM, z));
+  clampCamera();
+}
+
+// touch support (basic single-finger pan + pinch zoom)
+let lastTouchDist = null;
+canvas.addEventListener('touchstart', (e)=>{
+  if(e.touches.length === 1){
+    isDragging = true; dragMoved = false;
+    dragStart.x = e.touches[0].clientX; dragStart.y = e.touches[0].clientY;
+    cameraStart.x = camera.x; cameraStart.y = camera.y;
+  } else if(e.touches.length === 2){
+    isDragging = false;
+    lastTouchDist = touchDist(e.touches);
+  }
+}, { passive:true });
+
+canvas.addEventListener('touchmove', (e)=>{
+  if(e.touches.length === 1 && isDragging){
+    const dx = (e.touches[0].clientX - dragStart.x) / camera.zoom;
+    const dy = (e.touches[0].clientY - dragStart.y) / camera.zoom;
+    if(Math.abs(dx)+Math.abs(dy) > 2) dragMoved = true;
+    camera.x = cameraStart.x - dx;
+    camera.y = cameraStart.y - dy;
+    clampCamera();
+  } else if(e.touches.length === 2){
+    const d = touchDist(e.touches);
+    if(lastTouchDist){
+      setZoom(camera.zoom + (d - lastTouchDist) * 0.004);
+    }
+    lastTouchDist = d;
+  }
+}, { passive:true });
+
+canvas.addEventListener('touchend', (e)=>{
+  if(e.touches.length === 0){ isDragging = false; lastTouchDist = null; }
+});
+
+function touchDist(touches){
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function clampCamera(){
+  const margin = CONFIG.TILE * 4;
+  const minX = -margin, maxX = MAP.w*CONFIG.TILE + margin;
+  const minY = -margin, maxY = MAP.h*CONFIG.TILE + margin;
+  camera.x = Math.max(minX, Math.min(maxX, camera.x));
+  camera.y = Math.max(minY, Math.min(maxY, camera.y));
+}
+
+/* =========================================================
+   === INFO PANEL ===
+   ========================================================= */
+const infoPanel = document.getElementById('infopanel');
+function updateInfoPanel(){
+  if(selectedColonist){
+    renderColonistPanel(selectedColonist);
+    return;
+  }
+  const tile = selectedTile || hoveredTile;
+  if(!tile){
+    infoPanel.innerHTML = `<div class="title">Wilderness</div><div class="row">hover a tile to inspect</div>`;
+    return;
+  }
+  const buildingHere = buildingGrid.get(tile.x+','+tile.y);
+  if(buildingHere){
+    renderBuildingPanel(buildingHere);
+    return;
+  }
+  const t = tile.terrain;
+  const label = t.id.charAt(0).toUpperCase() + t.id.slice(1);
+  infoPanel.innerHTML = `
+    <div class="title">${label}</div>
+    <div class="row">coords: ${tile.x}, ${tile.y}</div>
+    <div class="row">walkable: ${t.walkable ? 'yes' : 'no'}</div>
+    <div class="row">buildable: ${t.buildable ? 'yes' : 'no'}</div>
+  `;
+}
+
+function renderBuildingPanel(b){
+  const def = BUILDING_TYPES[b.type];
+  if(b.isComplete){
+    infoPanel.innerHTML = `
+      <div class="title">${def.name}</div>
+      <div class="row">${def.desc}</div>
+      <div class="row">coords: ${b.tx}, ${b.ty}</div>
+    `;
+    return;
+  }
+  const pct = Math.round(b.workDone/b.workRequired*100);
+  infoPanel.innerHTML = `
+    <div class="title">${def.name} (Blueprint)</div>
+    <div class="row">${def.desc}</div>
+    <div class="bar-row">
+      <span class="bar-label">build</span>
+      <span class="bar-track"><span class="bar-fill skill" style="width:${pct}%"></span></span>
+    </div>
+    <div class="row">${pct}% complete</div>
+    <button id="cancelBuildBtn" class="mini-btn">Cancel &amp; Refund</button>
+  `;
+  const btn = document.getElementById('cancelBuildBtn');
+  if(btn) btn.addEventListener('click', ()=>{
+    cancelBuilding(b);
+    selectedTile = null;
+    updateInfoPanel();
+  });
+}
+
+function renderColonistPanel(c){
+  const traitsHtml = c.traits.map(t => `<span class="trait-tag" title="${t.desc}">${t.name}</span>`).join('');
+  const topSkills = SKILL_LIST.slice().sort((a,b)=>c.skills[b]-c.skills[a]).slice(0,4);
+  const skillsHtml = topSkills.map(s => `
+    <div class="bar-row">
+      <span class="bar-label">${s}</span>
+      <span class="bar-track"><span class="bar-fill skill" style="width:${c.skills[s]/20*100}%"></span></span>
+    </div>
+  `).join('');
+  const needOrder = ['hunger','rest','comfort','social','joy'];
+  const needsHtml = needOrder.map(n => {
+    const v = c.needs[n];
+    return `
+      <div class="bar-row">
+        <span class="bar-label">${n}</span>
+        <span class="bar-track"><span class="bar-fill need${v<30?' low':''}" style="width:${v}%"></span></span>
+      </div>
+    `;
+  }).join('');
+  const statusLine = c.state === 'walking' ? (c.foraging ? 'foraging' : 'walking') : 'idle';
+  const moodColor = c.breaking ? 'var(--danger)' : (c.mood>=60 ? 'var(--moss-dark)' : c.mood>=30 ? '#a9781f' : 'var(--danger)');
+
+  infoPanel.innerHTML = `
+    <div class="title">${c.name}</div>
+    <div class="row">${statusLine} · health ${c.health}%</div>
+    <div class="row" style="color:${moodColor}; font-weight:600;">${moodLabel(c)} (${Math.round(c.mood)})</div>
+    <div class="traits">${traitsHtml}</div>
+    <div class="section-label">Top Skills</div>
+    ${skillsHtml}
+    <div class="section-label">Needs</div>
+    ${needsHtml}
+  `;
+}
+
+/* =========================================================
+   === RENDERING ===
+   ========================================================= */
+let lastFrameTime = performance.now();
+
+function render(now){
+  const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // clamp to avoid tab-switch jumps
+  lastFrameTime = now;
+  updateColonists(dt);
+
+  const dpr = devicePixelRatio;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const viewW = canvas.width/dpr, viewH = canvas.height/dpr;
+
+  ctx.fillStyle = '#1a120c';
+  ctx.fillRect(0,0,viewW,viewH);
+
+  const t = CONFIG.TILE * camera.zoom;
+
+  // visible tile range with 1-tile padding
+  const topLeft = screenToTile(0,0);
+  const bottomRight = screenToTile(viewW, viewH);
+  const x0 = Math.max(0, topLeft.tx - 1);
+  const y0 = Math.max(0, topLeft.ty - 1);
+  const x1 = Math.min(MAP.w-1, bottomRight.tx + 1);
+  const y1 = Math.min(MAP.h-1, bottomRight.ty + 1);
+
+  for(let ty=y0; ty<=y1; ty++){
+    for(let tx=x0; tx<=x1; tx++){
+      const tile = MAP.tiles[ty*MAP.w+tx];
+      const s = worldToScreen(tx*CONFIG.TILE, ty*CONFIG.TILE);
+      const col = tile.variant ? tile.terrain.colorAlt : tile.terrain.color;
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.floor(s.x), Math.floor(s.y), Math.ceil(t)+1, Math.ceil(t)+1);
+    }
+  }
+
+  // subtle grid lines when zoomed in enough to be useful
+  if(camera.zoom > 0.7){
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    for(let ty=y0; ty<=y1+1; ty++){
+      const s = worldToScreen(x0*CONFIG.TILE, ty*CONFIG.TILE);
+      const e = worldToScreen((x1+1)*CONFIG.TILE, ty*CONFIG.TILE);
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+    }
+    for(let tx=x0; tx<=x1+1; tx++){
+      const s = worldToScreen(tx*CONFIG.TILE, y0*CONFIG.TILE);
+      const e = worldToScreen(tx*CONFIG.TILE, (y1+1)*CONFIG.TILE);
+      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke();
+    }
+  }
+
+  // hover highlight
+  if(hoveredTile){
+    drawTileOutline(hoveredTile, 'rgba(255,255,255,0.55)', 2);
+  }
+  // selection highlight
+  if(selectedTile){
+    drawTileOutline(selectedTile, '#e0954f', 3);
+  }
+
+  drawBuildings();
+  drawColonists();
+  drawPlacementGhost();
+
+  requestAnimationFrame(render);
+}
+
+function drawBuildings(){
+  for(const b of buildings){
+    const def = BUILDING_TYPES[b.type];
+    const s = worldToScreen(b.tx*CONFIG.TILE, b.ty*CONFIG.TILE);
+    const t = CONFIG.TILE * camera.zoom;
+    const pad = t*0.12;
+
+    ctx.globalAlpha = b.isComplete ? 1 : 0.55;
+    ctx.fillStyle = def.color;
+    ctx.fillRect(s.x+pad, s.y+pad, t-pad*2, t-pad*2);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(43,29,20,0.8)';
+    ctx.strokeRect(s.x+pad, s.y+pad, t-pad*2, t-pad*2);
+    ctx.globalAlpha = 1;
+
+    if(!b.isComplete){
+      // diagonal hatch reads as "under construction" at a glance
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(s.x+pad, s.y+pad, t-pad*2, t-pad*2);
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 2;
+      for(let i=-t; i<t*2; i+=6){
+        ctx.beginPath();
+        ctx.moveTo(s.x+i, s.y+t);
+        ctx.lineTo(s.x+i+t, s.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // progress bar floating above the blueprint
+      const pct = b.workDone / b.workRequired;
+      const barW = t*0.9, barH = Math.max(3, t*0.08);
+      const barX = s.x + (t-barW)/2, barY = s.y - barH - 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#e0954f';
+      ctx.fillRect(barX, barY, barW*pct, barH);
+    }
+  }
+}
+
+function drawPlacementGhost(){
+  if(!placementMode || !hoveredTile) return;
+  const def = BUILDING_TYPES[placementMode];
+  const valid = canPlaceBuilding(hoveredTile.x, hoveredTile.y) &&
+                resources.wood>=def.cost.wood && resources.stone>=def.cost.stone;
+  const s = worldToScreen(hoveredTile.x*CONFIG.TILE, hoveredTile.y*CONFIG.TILE);
+  const t = CONFIG.TILE * camera.zoom;
+
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = valid ? '#5a7247' : '#8b3a2f';
+  ctx.fillRect(s.x, s.y, t, t);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = valid ? '#8fae72' : '#c96a5a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(s.x+1, s.y+1, t-2, t-2);
+}
+
+function drawColonists(){
+  for(const c of colonists){
+    const s = worldToScreen(c.wx, c.wy);
+    const r = Math.max(3, CONFIG.TILE * camera.zoom * 0.32);
+
+    // path preview for the selected, walking colonist
+    if(c === selectedColonist && c.path.length){
+      ctx.strokeStyle = 'rgba(224,149,79,0.6)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      for(const node of c.path){
+        const ns = worldToScreen(node.x*CONFIG.TILE+CONFIG.TILE/2, node.y*CONFIG.TILE+CONFIG.TILE/2);
+        ctx.lineTo(ns.x, ns.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + r*0.75, r*0.8, r*0.35, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // body
+    ctx.fillStyle = c.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.lineWidth = c === selectedColonist ? 3 : 1.5;
+    ctx.strokeStyle = c === selectedColonist ? '#e0954f' : 'rgba(43,29,20,0.7)';
+    ctx.stroke();
+
+    // name label when zoomed in enough
+    if(camera.zoom > 0.65){
+      ctx.font = '11px "EB Garamond", serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillText(c.name, s.x+1, s.y - r - 5);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.fillText(c.name, s.x, s.y - r - 6);
+    }
+  }
+}
+
+function drawTileOutline(tile, color, width){
+  const s = worldToScreen(tile.x*CONFIG.TILE, tile.y*CONFIG.TILE);
+  const t = CONFIG.TILE * camera.zoom;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.strokeRect(s.x+width/2, s.y+width/2, t-width, t-width);
+}
+
+clampCamera();
+focusCameraOn(colonists[0].wx, colonists[0].wy);
+updateResourceBar();
+updateHint();
+requestAnimationFrame(render);
+
+/* =========================================================
+   === COLONIST BAR (bottom roster, RimWorld-style) ===
+   ========================================================= */
+function renderColonistBar(){
+  const bar = document.getElementById('colonistbar');
+  bar.innerHTML = colonists.map(c => {
+    const moodColor = c.breaking ? '#8b3a2f' : (c.mood>=60 ? '#5a7247' : c.mood>=30 ? '#c9a23c' : '#8b3a2f');
+    return `
+    <div class="colonist-card panel${c===selectedColonist?' selected':''}${c.breaking?' breaking':''}" data-id="${c.id}">
+      <div class="colonist-avatar" style="background:${c.color}">${c.name.charAt(0)}${c.breaking?'<span class="break-badge">!</span>':''}</div>
+      <div class="cname">${c.name}</div>
+      <div class="cmood"><div class="cmood-fill" style="width:${Math.max(0,c.mood)}%; background:${moodColor}"></div></div>
+    </div>
+  `;
+  }).join('');
+  bar.querySelectorAll('.colonist-card').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = parseInt(el.dataset.id, 10);
+      const c = colonists.find(cc => cc.id === id);
+      if(c){
+        selectedColonist = c;
+        selectedTile = null;
+        focusCameraOn(c.wx, c.wy);
+        updateInfoPanel();
+        renderColonistBar();
+      }
+    });
+  });
+  renderAlerts();
+}
+renderColonistBar();
+setInterval(()=>{ renderColonistBar(); if(selectedColonist) updateInfoPanel(); }, 500);
+
+/* =========================================================
+   === ALERTS (mental-break notices, top banner) ===
+   ========================================================= */
+function renderAlerts(){
+  const el = document.getElementById('alerts');
+  const breaking = colonists.filter(c => c.breaking);
+  if(breaking.length === 0){ el.innerHTML = ''; return; }
+  el.innerHTML = breaking.map(c => `
+    <div class="alert-chip">⚠ ${c.name} is having a breakdown — ${c.breaking.type === 'wander' ? 'wandering off' : 'sulking'}</div>
+  `).join('');
+}
+
+/* =========================================================
+   === SAVE / LOAD (smoke test for the IndexedDB layer) ===
+   Once colonists/buildings/resources exist, this will serialize
+   the real gameState instead of just camera + map seed.
+   ========================================================= */
+const saveStatus = document.getElementById('saveStatus');
+
+function flashStatus(msg){
+  saveStatus.textContent = msg;
+  setTimeout(() => { if(saveStatus.textContent === msg) saveStatus.textContent = ''; }, 2200);
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const state = {
+    name: 'Hearthbound Save',
+    tick: 0,
+    seed: CONFIG.SEED,
+    camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
+    colonists: colonists.map(c => ({
+      id: c.id, name: c.name, color: c.color,
+      tx: Math.floor(c.wx/CONFIG.TILE), ty: Math.floor(c.wy/CONFIG.TILE),
+      skills: c.skills, traits: c.traits.map(t=>t.id),
+      needs: c.needs, mood: c.mood, health: c.health
+    })),
+    resources: { wood: resources.wood, stone: resources.stone },
+    buildings: buildings.map(b => ({
+      id: b.id, type: b.type, tx: b.tx, ty: b.ty,
+      isComplete: b.isComplete, workRequired: b.workRequired, workDone: b.workDone,
+      required: b.required, delivered: b.delivered
+    })),
+    settlementTier: 'hamlet'
+  };
+  try{
+    await HearthboundDB.saveGame('slot1', state);
+    flashStatus('saved to IndexedDB ✓');
+  } catch(err){
+    flashStatus('save failed');
+    console.error(err);
+  }
+});
+
+document.getElementById('loadBtn').addEventListener('click', async () => {
+  try{
+    const state = await HearthboundDB.loadGame('slot1');
+    if(!state){ flashStatus('no save found'); return; }
+    camera.x = state.camera.x;
+    camera.y = state.camera.y;
+    camera.zoom = state.camera.zoom;
+    clampCamera();
+
+    if(state.colonists && state.colonists.length){
+      colonists.length = 0;
+      selectedColonist = null;
+      for(const cd of state.colonists){
+        const restored = createColonist(cd.tx, cd.ty, cd.name, colonists.length);
+        restored.id = cd.id;
+        restored.color = cd.color;
+        restored.skills = cd.skills;
+        restored.traits = cd.traits.map(id => TRAIT_POOL.find(t=>t.id===id)).filter(Boolean);
+        restored.needs = cd.needs;
+        restored.mood = cd.mood;
+        restored.health = cd.health;
+        colonists.push(restored);
+      }
+      colonistIdCounter = Math.max(...colonists.map(c=>c.id)) + 1;
+      renderColonistBar();
+    }
+
+    if(state.resources){
+      resources.wood = state.resources.wood;
+      resources.stone = state.resources.stone;
+    }
+    buildings.length = 0;
+    buildingGrid.clear();
+    if(state.buildings && state.buildings.length){
+      for(const bd of state.buildings){
+        const def = BUILDING_TYPES[bd.type];
+        if(!def) continue;
+        const b = { ...bd, blocksMovement: def.blocksMovement };
+        buildings.push(b);
+        buildingGrid.set(b.tx+','+b.ty, b);
+      }
+      buildingIdCounter = Math.max(...buildings.map(b=>b.id)) + 1;
+    }
+    updateResourceBar();
+    renderBuildMenu();
+    selectedTile = null;
+    updateInfoPanel();
+
+    flashStatus('loaded ✓');
+  } catch(err){
+    flashStatus('load failed');
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>
