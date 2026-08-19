@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#241812">
 <title>The Ranch — A Survival Settlement</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -22,8 +26,44 @@
     --water:#3f6b7a;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{
-    margin:0; padding:0; height:100%; overflow:hidden;
+  html{
+    margin:0; padding:0;
+    /* 100% first as a fallback for browsers without dvh support, then the
+       dynamic-viewport unit overrides it. Plain vh/`100%` on mobile is
+       sized to the LARGEST possible viewport (address bar hidden), so the
+       page ends up taller than the visible area and mobile browser chrome
+       (or a wrapper like Median's) shows a sliver of empty space / scroll
+       at the edge instead of true full-bleed. dvh tracks the viewport
+       that's actually visible right now. dvh/vh is safe here because
+       html is the root — it's never affected by the rotation trick below,
+       only ever sized against the real device viewport. */
+    height:100%; height:100dvh;
+    width:100%;
+    overflow:hidden;
+    position:fixed; inset:0;
+    overscroll-behavior:none;
+    background:var(--wood-dark);
+  }
+  body{
+    margin:0; padding:0;
+    /* Deliberately a plain percentage, NOT dvh — dvh always measures the
+       real device viewport, but in the portrait rotation-lock below, html
+       becomes a rotated LOCAL box (device height x device width, not
+       device width x device height), and body must size itself relative
+       to THAT box, not the real screen. dvh here would ignore the
+       rotation and make body far too tall, pushing every button off the
+       edge of the visible (rotated) area — which is exactly what
+       happened when this was `height:100dvh`. */
+    height:100%;
+    width:100%;
+    overflow:hidden;
+    /* Belt-and-braces against the page itself ever scrolling/bouncing
+       (iOS rubber-banding reveals the white canvas-less background behind
+       the document, which reads as "not full screen"). Fixed positioning
+       plus overscroll-behavior:none keeps the viewport pinned exactly to
+       the screen regardless of host/webview quirks. */
+    position:fixed; inset:0;
+    overscroll-behavior:none;
     background:var(--wood-dark);
     font-family:'EB Garamond', serif;
     color:var(--parchment);
@@ -42,10 +82,10 @@
     html{
       transform: rotate(-90deg);
       transform-origin: left top;
-      width: 100vh;
+      width: 100vh; width: 100dvh;
       height: 100vw;
       overflow-x: hidden;
-      position: absolute;
+      position: fixed;
       top: 100%;
       left: 0;
     }
@@ -54,6 +94,12 @@
     position:absolute; inset:0;
     display:block;
     cursor:grab;
+    /* The canvas handles its own pan/zoom gestures in JS — tell the browser
+       not to also interpret drags/pinches here as page scroll/zoom, which
+       is what made panning feel like it was fighting the page instead of
+       a real fullscreen app. */
+    touch-action:none;
+    overscroll-behavior:none;
   }
   #world.dragging{ cursor:grabbing; }
 
@@ -69,11 +115,21 @@
   #titlebar{
     position:absolute; top:0; left:0; right:0;
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 18px;
+    /* max() keeps the normal padding on devices with no notch/cutout, and
+       grows it on devices that do (real landscape phones/tablets, or a
+       host that reports safe-area insets) so the title/resources never
+       sit under a camera cutout or status bar. */
+    padding:10px max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
     background:linear-gradient(180deg, rgba(36,24,18,0.92), rgba(36,24,18,0));
     pointer-events:none;
     z-index:5;
   }
+  /* Hidden pre-founding / while the Main Menu or Founding Charter overlay
+     is up — those overlays are a semi-transparent gradient, not a solid
+     background, so the logo, resource counters, and clock underneath
+     were bleeding through them instead of staying tucked away until
+     there's an actual settlement to report on. */
+  #titlebar[hidden]{ display:none; }
   #titlebar h1{
     margin:0;
     font-family:'Cinzel', serif;
@@ -92,10 +148,11 @@
     margin-top:-2px;
   }
 
-  /* Resource bar. [Redesign] clockpanel now lives inside titleright too,
-     stacked above resourcebar, so the day/time readout and the resource
-     counts read as one right-aligned column instead of two separate
-     pieces spread across the bar. */
+  /* Time + resources HUD — a single merged panel rather than a stack of
+     separate boxes. Clock, resource counters, and the food forecast all
+     share one background/border and sit in one row, split by thin
+     dividers, so they read as one instrument panel instead of three
+     independent widgets glued together. */
   #titleright{
     display:flex; flex-direction:column; align-items:flex-end; gap:4px;
     pointer-events:auto;
@@ -103,33 +160,43 @@
        button (44px circle, right:14px) instead of sitting under it. */
     margin-right:56px;
   }
-  #resourcebar{
-    display:flex; gap:10px;
+  #hudpanel{
+    display:flex; align-items:center; gap:12px;
+    padding:6px 14px;
     pointer-events:auto;
   }
+  .hud-divider{
+    width:1px; align-self:stretch;
+    background:rgba(43,29,20,0.28);
+    flex:0 0 auto;
+  }
   #clockpanel{
-    display:flex; align-items:center; gap:8px;
-    padding:5px 14px;
-    pointer-events:auto;
+    display:flex; align-items:center; gap:7px;
     font-family:'JetBrains Mono', monospace;
     font-size:12px;
     white-space:nowrap;
   }
+  #clockpanel[hidden]{ display:none; }
+  #hudpanel:has(#clockpanel[hidden]) .hud-divider{ display:none; }
   #clockIcon{ font-size:14px; }
+  #resourcebar{
+    display:flex; gap:12px;
+  }
   #forecastLine{
     font-family:'JetBrains Mono', monospace;
     font-size:11px;
     color:var(--parchment-dark);
     opacity:0.85;
-    padding-right:4px;
+    padding-right:2px;
   }
+  #forecastLine:empty{ display:none; }
   #forecastLine.warn{ color:#e0703f; opacity:1; font-weight:600; }
   .resource{
     display:flex; align-items:center; gap:6px;
-    padding:5px 12px;
     font-family:'JetBrains Mono', monospace;
     font-size:13px;
-    font-weight:500;
+    font-weight:600;
+    white-space:nowrap;
   }
   .resource .dot{
     width:9px; height:9px; border-radius:2px;
@@ -140,14 +207,21 @@
   .dot.food{ background:#8c9c3f; }
   .dot.tools{ background:#9a9284; }
   .dot.fiber{ background:#b8a96a; }
+  @media (max-width: 560px){
+    #hudpanel{ gap:8px; padding:5px 10px; }
+    #resourcebar{ gap:8px; }
+    .resource{ font-size:12px; }
+    #clockpanel{ font-size:11px; }
+  }
 
   /* Bottom UI cluster: info panel (left) / survivor bar (center) / build+zoom (right).
      A single flex row reserves space for each so they can't overlap regardless of
      viewport width — replaces the old independent position:absolute elements. */
   #bottombar{
-    position:absolute; left:0; right:0; bottom:14px;
+    position:absolute; left:0; right:0;
+    bottom:max(14px, env(safe-area-inset-bottom));
     display:flex; align-items:flex-end; justify-content:space-between;
-    gap:8px; padding:0 14px;
+    gap:8px; padding:0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
     /* Was z-index:5, sitting below #charterScreen's z-index:50 — Save/Load
        used to live in a separate top-level panel specifically raised
        above the charter overlay (see the 8b fix). Now that they're
@@ -187,7 +261,7 @@
   /* Zoom controls — moved out of the bottom-right cluster and anchored
      under the Settings button in the top-right corner instead. */
   #zoomcontrols{
-    position:absolute; top:70px; right:14px; z-index:60;
+    position:absolute; top:70px; right:max(14px, env(safe-area-inset-right)); z-index:60;
     display:flex; flex-direction:column; gap:6px;
   }
   #zoomcontrols[hidden]{ display:none; }
@@ -213,7 +287,7 @@
      the charter overlay is still showing. Menu now opens downward
      (column, not column-reverse) since the button sits at the top. */
   #settingsbar{
-    position:absolute; top:14px; right:14px; z-index:60;
+    position:absolute; top:max(14px, env(safe-area-inset-top)); right:max(14px, env(safe-area-inset-right)); z-index:60;
     display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     pointer-events:auto;
   }
@@ -763,6 +837,7 @@
     position:absolute; inset:0; z-index:50;
     display:flex; align-items:center; justify-content:center;
     padding:20px;
+    padding:max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
     background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
     overflow-y:auto;
   }
@@ -885,7 +960,7 @@
   }
   #foundBtn:disabled, #charterNextBtn:disabled{ opacity:0.4; cursor:not-allowed; }
   #foundBtn:not(:disabled):active, #charterNextBtn:not(:disabled):active{ transform:translateY(1px); }
-  #charterPage2[hidden]{ display:none; }
+  #charterPage2[hidden], #charterPage3[hidden]{ display:none; }
   .charter-steps{
     display:flex; justify-content:center; gap:6px; margin-bottom:12px;
   }
@@ -897,6 +972,47 @@
   @media (max-width: 560px){
     .bg-grid{ grid-template-columns:repeat(2, 1fr); }
     .companion-grid{ grid-template-columns:1fr; }
+  }
+  /* Mobile landscape: the rotated viewport is short on the vertical axis
+     (device width becomes the effective height), so the charter panel
+     needs to shrink its chrome rather than rely on max-height scrolling
+     alone — tighter padding/gaps/fonts keep each (now-shorter, since the
+     charter is split across 3 steps) page visible without feeling cramped. */
+  @media (max-height: 480px), (max-width: 480px){
+    .charter-panel{ padding:14px 16px 12px; max-height:96vh; }
+    .charter-header{ margin-bottom:8px; }
+    .charter-header h2{ font-size:18px; }
+    .charter-header p{ font-size:12px; }
+    .charter-steps{ margin-bottom:8px; }
+    .charter-section{ margin-top:10px; }
+    .bg-card{ padding:6px 8px; }
+    .bg-card .bg-blurb{ font-size:10.5px; }
+    .companion-card{ padding:7px 9px; }
+    .charter-footer{ margin-top:12px; }
+  }
+  /* Very short viewports (small phones in the rotated landscape-lock view,
+     roughly iPhone SE/older-Android width and below) — the 480px tier
+     above still leaves the charter panel taller than the screen on these,
+     forcing an internal scroll mid-step. Trim further so each of the
+     three charter steps fits without scrolling. */
+  @media (max-height: 380px){
+    #charterScreen{ padding-top:6px; padding-bottom:6px; }
+    .charter-panel{ padding:10px 14px 10px; }
+    .charter-header{ margin-bottom:5px; }
+    .charter-header h2{ font-size:16px; }
+    .charter-header p{ display:none; }
+    .charter-steps{ margin-bottom:6px; }
+    .charter-section{ margin-top:7px; }
+    .charter-section .section-label{ margin-bottom:4px; }
+    .bg-grid{ gap:5px; }
+    .bg-card{ padding:5px 7px; }
+    .bg-card .bg-name{ font-size:11px; margin-bottom:1px; }
+    .bg-card .bg-blurb{ display:none; }
+    .companion-grid{ gap:5px; }
+    .companion-card{ padding:5px 7px; }
+    .companion-card .comp-meta{ margin:1px 0 2px; }
+    .charter-footer{ margin-top:8px; }
+    #foundBtn, #charterNextBtn{ padding:8px 16px; font-size:12px; }
   }
 </style>
 </head>
@@ -929,6 +1045,7 @@
     <div class="charter-steps">
       <span class="charter-step-dot" id="charterStepDot1"></span>
       <span class="charter-step-dot" id="charterStepDot2"></span>
+      <span class="charter-step-dot" id="charterStepDot3"></span>
     </div>
 
     <div id="charterPage1">
@@ -943,14 +1060,16 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <div id="charterPage2" hidden>
       <div class="charter-section">
         <div class="section-label">Founder's Background</div>
         <div class="bg-grid" id="founderBgGrid"></div>
       </div>
     </div>
 
-    <div id="charterPage2" hidden>
+    <div id="charterPage3" hidden>
       <div class="charter-section">
         <div class="section-label">Choose Two Companions</div>
         <div class="companion-grid" id="companionGrid"></div>
@@ -965,23 +1084,27 @@
   </div>
 </div>
 
-<div id="titlebar">
+<div id="titlebar" hidden>
   <div>
     <h1>THE RANCH</h1>
     <div class="subtitle">what's left, after</div>
   </div>
   <div id="titleright">
-    <!-- [Redesign] clockpanel now stacks above resourcebar, so time and
-         resource counts read as a single right-aligned column. -->
-    <div id="clockpanel" class="panel" hidden>
-      <span id="clockIcon">☀️</span>
-      <span id="clockText"></span>
-    </div>
-    <div id="resourcebar">
-      <div class="panel resource"><span class="dot wood"></span><span id="woodCount">0</span></div>
-      <div class="panel resource"><span class="dot stone"></span><span id="stoneCount">0</span></div>
-      <div class="panel resource"><span class="dot food"></span><span id="foodCount">0</span></div>
-      <div class="panel resource"><span class="dot tools"></span><span id="toolsCount">0</span></div>
+    <!-- [Redesign] clock, resources, and forecast now live inside one
+         merged panel (#hudpanel) instead of separate boxes, so they read
+         as a single instrument cluster. -->
+    <div id="hudpanel" class="panel">
+      <div id="clockpanel" hidden>
+        <span id="clockIcon">☀️</span>
+        <span id="clockText"></span>
+      </div>
+      <span class="hud-divider"></span>
+      <div id="resourcebar">
+        <span class="resource"><span class="dot wood"></span><span id="woodCount">0</span></span>
+        <span class="resource"><span class="dot stone"></span><span id="stoneCount">0</span></span>
+        <span class="resource"><span class="dot food"></span><span id="foodCount">0</span></span>
+        <span class="resource"><span class="dot tools"></span><span id="toolsCount">0</span></span>
+      </div>
     </div>
     <div id="forecastLine"></div>
   </div>
@@ -3600,6 +3723,13 @@ function resizeCanvas(){
 }
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('orientationchange', resizeCanvas);
+// Entering/exiting fullscreen changes window.innerWidth/innerHeight but
+// doesn't always fire a plain 'resize' in every host — cover it directly.
+document.addEventListener('fullscreenchange', resizeCanvas);
+document.addEventListener('webkitfullscreenchange', resizeCanvas);
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', resizeCanvas);
+}
 resizeCanvas();
 
 /* world <-> screen conversion — isometric. Orthogonal world-pixel coords
@@ -3988,18 +4118,21 @@ const charterNextBtn = document.getElementById('charterNextBtn');
 const charterHint = document.getElementById('charterHint');
 const charterPage1 = document.getElementById('charterPage1');
 const charterPage2 = document.getElementById('charterPage2');
+const charterPage3 = document.getElementById('charterPage3');
 const charterTitle = document.getElementById('charterTitle');
 const charterSubtitle = document.getElementById('charterSubtitle');
 const charterStepDot1 = document.getElementById('charterStepDot1');
 const charterStepDot2 = document.getElementById('charterStepDot2');
+const charterStepDot3 = document.getElementById('charterStepDot3');
 const charterBackBtn = document.getElementById('charterBackBtn');
 
 let founderGender = 'f';
 let founderBackground = 'rancher';
 let companionCandidates = [];
 let selectedCompanionIdx = new Set();
-// [Charter split] two-step flow: page 1 names/backgrounds the founder,
-// page 2 picks the two companions — was a single long page before.
+// [Charter split] three-step flow: page 1 names the founder, page 2 picks
+// their background, page 3 picks the two companions — each step used to
+// be crammed two-to-a-page, which made the panel too tall on mobile.
 let charterPage = 1;
 
 { const n = randomFullName(founderGender); founderNameInput.value = n.name; founderNameInput.dataset.surname = n.surname; }
@@ -4068,14 +4201,22 @@ companionGrid.addEventListener('click', (e) => {
 
 function founderNameOk(){ return founderNameInput.value.trim().length > 0; }
 
-// Page 1 (founder + background) — gates the Next button.
+// Page 1 (founder name) — gates the Next button.
 function updatePage1State(){
   const nameOk = founderNameOk();
   charterNextBtn.disabled = !nameOk;
-  charterHint.textContent = !nameOk ? 'name your founder to continue' : 'ready to choose your companions';
+  charterHint.textContent = !nameOk ? 'name your founder to continue' : 'ready to choose a background';
 }
 
-// Page 2 (companions) — gates the Found button.
+// Page 2 (founder's background) — always has a default selection, so Next
+// is never blocked here; just reflects the current pick in the hint.
+function updatePage2State(){
+  charterNextBtn.disabled = false;
+  const bg = BACKGROUND_BY_ID[founderBackground];
+  charterHint.textContent = bg ? `${bg.name} — ready to choose your companions` : 'ready to choose your companions';
+}
+
+// Page 3 (companions) — gates the Found button.
 function updateFoundBtnState(){
   const companionsOk = selectedCompanionIdx.size === 2;
   foundBtn.disabled = !companionsOk;
@@ -4085,7 +4226,9 @@ function updateFoundBtnState(){
 }
 
 function updateCharterValidation(){
-  if(charterPage === 1) updatePage1State(); else updateFoundBtnState();
+  if(charterPage === 1) updatePage1State();
+  else if(charterPage === 2) updatePage2State();
+  else updateFoundBtnState();
 }
 founderNameInput.addEventListener('input', updateCharterValidation);
 
@@ -4093,27 +4236,34 @@ function goToCharterPage(n){
   charterPage = n;
   charterPage1.toggleAttribute('hidden', n !== 1);
   charterPage2.toggleAttribute('hidden', n !== 2);
-  charterNextBtn.toggleAttribute('hidden', n !== 1);
-  foundBtn.toggleAttribute('hidden', n !== 2);
+  charterPage3.toggleAttribute('hidden', n !== 3);
+  charterNextBtn.toggleAttribute('hidden', n === 3);
+  foundBtn.toggleAttribute('hidden', n !== 3);
   charterStepDot1.classList.toggle('active', n === 1);
   charterStepDot2.classList.toggle('active', n === 2);
+  charterStepDot3.classList.toggle('active', n === 3);
   if(n === 1){
     charterTitle.textContent = 'Founding Charter';
     charterSubtitle.textContent = 'Four strangers and a fence. Name the one who leads them.';
     charterBackBtn.textContent = '← Menu';
     charterBackBtn.title = 'Back to main menu';
+  } else if(n === 2){
+    charterTitle.textContent = 'Founding Charter';
+    charterSubtitle.textContent = "What were they, before the fence went up?";
+    charterBackBtn.textContent = '← Back';
+    charterBackBtn.title = 'Back to founder';
   } else {
     charterTitle.textContent = 'Founding Charter';
     charterSubtitle.textContent = 'Two more will stand with you at the fence.';
     charterBackBtn.textContent = '← Back';
-    charterBackBtn.title = 'Back to founder';
+    charterBackBtn.title = 'Back to background';
   }
   updateCharterValidation();
 }
 
 charterNextBtn.addEventListener('click', () => {
   if(charterNextBtn.disabled) return;
-  goToCharterPage(2);
+  goToCharterPage(charterPage + 1);
 });
 
 foundBtn.addEventListener('click', () => {
@@ -4132,7 +4282,7 @@ foundBtn.addEventListener('click', () => {
   // [UI cleanup] the 5 gameplay toggle groups, plus settings/zoom/legend,
   // are hidden until there's an actual game to show — this is founding
   // completing for real.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -4150,19 +4300,47 @@ goToCharterPage(1);
    === MAIN MENU (New Game / Continue) — the very first screen shown ===
    ========================================================= */
 const mainMenuScreen = document.getElementById('mainMenuScreen');
+/* Request true browser/OS fullscreen. The Fullscreen API only works from
+   inside a user-gesture handler (a click), which is why this is called
+   from the New Game / Continue buttons rather than on load — and why
+   there's also a one-time fallback on the very first tap/click anywhere,
+   in case those two miss it (e.g. Continue is disabled and the player's
+   first tap lands elsewhere). Wrapped hosts (like Median) sometimes
+   already run fullscreen and simply don't expose the API, or block it —
+   failing quietly here is intentional, this is a nice-to-have, not
+   something that should ever break the menu if it rejects/throws. */
+function tryEnterFullscreen(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if(req && !document.fullscreenElement && !document.webkitFullscreenElement){
+    try{ req.call(el).catch(()=>{}); }catch(err){ /* ignore — non-fatal */ }
+  }
+}
+let firstInteractionFullscreenDone = false;
+function firstInteractionFullscreen(){
+  if(firstInteractionFullscreenDone) return;
+  firstInteractionFullscreenDone = true;
+  tryEnterFullscreen();
+  window.removeEventListener('click', firstInteractionFullscreen);
+  window.removeEventListener('touchend', firstInteractionFullscreen);
+}
+window.addEventListener('click', firstInteractionFullscreen, { once:true });
+window.addEventListener('touchend', firstInteractionFullscreen, { once:true });
+
 const newGameBtn = document.getElementById('newGameBtn');
 const continueBtn = document.getElementById('continueBtn');
 const continueMeta = document.getElementById('continueMeta');
 
 newGameBtn.addEventListener('click', () => {
+  tryEnterFullscreen();
   mainMenuScreen.setAttribute('hidden','');
   charterScreen.removeAttribute('hidden');
   goToCharterPage(1);
 });
 
 charterBackBtn.addEventListener('click', () => {
-  if(charterPage === 2){
-    goToCharterPage(1);
+  if(charterPage > 1){
+    goToCharterPage(charterPage - 1);
     return;
   }
   charterScreen.setAttribute('hidden','');
@@ -4171,6 +4349,7 @@ charterBackBtn.addEventListener('click', () => {
 
 continueBtn.addEventListener('click', async () => {
   if(continueBtn.disabled) return;
+  tryEnterFullscreen();
   mainMenuScreen.setAttribute('hidden','');
   const ok = await performLoad();
   if(!ok){
@@ -4218,7 +4397,7 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
   document.getElementById('settingsmenu').setAttribute('hidden','');
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel']
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
@@ -6943,7 +7122,7 @@ async function performLoad(){
       charterScreen.setAttribute('hidden','');
       // [UI cleanup] same as the founding path — a loaded save is also
       // a real game, un-hide the gameplay toggles plus settings/zoom/legend.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
     }
 
