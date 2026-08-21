@@ -179,6 +179,16 @@
   #clockpanel[hidden]{ display:none; }
   #hudpanel:has(#clockpanel[hidden]) .hud-divider{ display:none; }
   #clockIcon{ font-size:14px; }
+  /* [Pause] */
+  #pauseIndicator{
+    font-family:'Cinzel', serif; font-weight:700; font-size:11.5px;
+    letter-spacing:0.4px; text-transform:uppercase;
+    color:var(--ember-bright);
+    white-space:nowrap;
+    animation: pause-pulse 1.6s ease-in-out infinite;
+  }
+  #pauseIndicator[hidden]{ display:none; }
+  @keyframes pause-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.55; } }
   #resourcebar{
     display:flex; gap:12px;
   }
@@ -472,6 +482,11 @@
   #buildmenu{
     display:flex; flex-direction:column; gap:6px;
     padding:10px; min-width:190px;
+    /* Bug fix: was missing the max-height/overflow pattern every other
+       panel (#jobsmenu etc.) already has — with 4 pens added on top of
+       the base building list, this silently overflowed off-screen in
+       landscape orientation with no way to scroll to the rest. */
+    max-height:min(70vh, 480px); overflow-y:auto;
   }
   #buildmenu[hidden]{ display:none; }
   .build-option{
@@ -518,12 +533,13 @@
     display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
   }
   #jobsbar[hidden]{ display:none; }
-  /* [UI cleanup] uniform sizing across all 6 toggle buttons — previously
-     each sized to its own label ("Chronicle" vs "Build"), so the row
-     looked uneven. Fixed width, centered label. */
-  .toggle-btn{
-    width:118px; text-align:center; white-space:nowrap;
-  }
+  /* [Bugfix] a leftover rule from an earlier icon-less design
+     (width:118px, meant for text-label buttons) was still here and
+     collided with .toggle-btn being reused for the charter's gender
+     selector — it was forcing "Woman"/"Man" to 118px each instead of
+     sizing to their short text. The bottom-bar buttons don't need it
+     either now that each has its own explicit 44px circular styling
+     below. Removed rather than rescoped, since nothing needs it anymore. */
   #jobsToggleBtn{
     width:44px; height:44px; padding:0;
     display:flex; align-items:center; justify-content:center;
@@ -989,6 +1005,16 @@
     .bg-card .bg-blurb{ font-size:10.5px; }
     .companion-card{ padding:7px 9px; }
     .charter-footer{ margin-top:12px; }
+    /* [Bugfix] short/landscape viewports — the charter rules above never
+       extended to in-game panels. #buildmenu is the one that actually
+       overflowed (longest list, 4 pens added on top of the base
+       buildings), so it's tightened specifically; a lower vh cap plus
+       denser rows so more of the list is visible before scrolling
+       kicks in. */
+    #buildmenu{ max-height:56vh; gap:4px; padding:8px; }
+    .build-option{ padding:5px 8px; gap:6px; }
+    .bo-name{ font-size:12px; }
+    .bo-cost{ font-size:10.5px; }
   }
   /* Very short viewports (small phones in the rotated landscape-lock view,
      roughly iPhone SE/older-Android width and below) — the 480px tier
@@ -1098,6 +1124,10 @@
         <span id="clockIcon">☀️</span>
         <span id="clockText"></span>
       </div>
+      <!-- [Pause] shown whenever a blocking modal (Assign Builder,
+           gift/arrival prompt, confirm dialog) has paused the game —
+           see pauseGame()/resumeGame(). -->
+      <span id="pauseIndicator" hidden>⏸ Paused</span>
       <span class="hud-divider"></span>
       <div id="resourcebar">
         <span class="resource"><span class="dot wood"></span><span id="woodCount">0</span></span>
@@ -2448,6 +2478,11 @@ function tryPlaceBuilding(typeId, tx, ty){
   renderBuildMenu();
   flashBuildStatus(`${def.name} blueprint placed`);
   if(selectedTile && selectedTile.x===tx && selectedTile.y===ty) updateInfoPanel();
+  // [UI: per the user's explicit request] every placement immediately
+  // opens the Assign Builder picker — no separate click into the info
+  // panel needed. openAssignPicker itself pauses the game (see its own
+  // pauseGame() call) until the player answers.
+  openAssignPicker('build', b, { sub: `who's building the ${def.name}?` });
   return b;
 }
 
@@ -2561,6 +2596,11 @@ function updateSurvivorBuilding(c, dt){
         queueGiftPrompt(b);
       }
     }
+    // [UI: operational role auto-assign] a farm plot, campfire, or
+    // guard building needs a second assignment beyond the builder who
+    // just finished it — see the queue defined above openAssignPicker.
+    const opRole = OPERATIONAL_ROLE_BY_BUILDING[b.type];
+    if(opRole) queueOperationalAssignPrompt(b, opRole);
     // Role persists (see releaseJob's comment) — a builder whose site just
     // finished goes looking for the next unbuilt blueprint on their own
     // next cycle, same as a chopper moving on to the next tree. [Phase 5 rework]
@@ -3444,8 +3484,9 @@ function renderLivestockMenu(){
    ========================================================= */
 let giftQueue = [];
 function queueGiftPrompt(buildingId){
+  const wasEmpty = giftQueue.length === 0;
   giftQueue.push(buildingId);
-  if(giftQueue.length === 1) openGiftModal();
+  if(wasEmpty){ pauseGame(); openGiftModal(); } // [Pause] once per queue, not per stacked prompt — see resumeGame() in advanceGiftQueue's drained branch
 }
 function openGiftModal(){
   const buildingId = giftQueue[0];
@@ -3474,7 +3515,7 @@ function resolveGift(buildingId, caretakerId){
 function advanceGiftQueue(){
   giftQueue.shift();
   if(giftQueue.length > 0) openGiftModal();
-  else document.getElementById('giftModal').hidden = true;
+  else { document.getElementById('giftModal').hidden = true; resumeGame(); }
 }
 document.getElementById('livestockToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('livestockmenu');
@@ -3629,16 +3670,59 @@ document.getElementById('arrivalRejectBtn').addEventListener('click', () => reso
 const assignModal = document.getElementById('assignModal');
 let pendingAssign = null; // { type, target } while the picker is open
 
+// [UI: operational role auto-assign] farm/campfire/guardpost/watchtower
+// each have a second assignment beyond who *builds* them — who tends/
+// cooks/guards afterward. Queued the same way as the gifting prompt
+// (queueGiftPrompt above): if two buildings finish construction in the
+// same frame, naively opening a second picker would silently overwrite
+// pendingAssign and lose the first prompt entirely — worse, it would
+// leave pauseDepth permanently stuck above 0 with no dangling prompt
+// left to close it, i.e. the game stuck paused forever. This processes
+// one at a time and only calls resumeGame() once fully drained.
+const OPERATIONAL_ROLE_BY_BUILDING = { farmplot:'farm', campfire:'cook', guardpost:'guard', watchtower:'guard' };
+const OPERATIONAL_ROLE_VERB = { farm:'tending', cook:'cooking at', guard:'standing guard at' };
+let operationalAssignQueue = []; // [{ buildingId, opRole }]
+
+function queueOperationalAssignPrompt(b, opRole){
+  const wasEmpty = operationalAssignQueue.length === 0;
+  operationalAssignQueue.push({ buildingId: b.id, opRole });
+  if(wasEmpty){ pauseGame(); openNextOperationalAssignPrompt(); }
+}
+function openNextOperationalAssignPrompt(){
+  if(!operationalAssignQueue.length) return;
+  const { buildingId, opRole } = operationalAssignQueue[0];
+  const b = buildings.find(x=>x.id===buildingId);
+  if(!b){ advanceOperationalAssignQueue(); return; } // building vanished (destroyed etc.) before the prompt was answered
+  const def = BUILDING_TYPES[b.type];
+  openAssignPicker(opRole, b, { sub: `who's ${OPERATIONAL_ROLE_VERB[opRole]} the ${def.name}?`, skipPause: true });
+}
+function advanceOperationalAssignQueue(){
+  operationalAssignQueue.shift();
+  if(operationalAssignQueue.length > 0) openNextOperationalAssignPrompt();
+  else resumeGame();
+}
+
 function openAssignPicker(type, target, opts){
   pendingAssign = { type, target };
   document.getElementById('assignTitle').textContent = `Assign ${JOB_LABELS[type]}`;
   document.getElementById('assignSub').textContent = (opts && opts.sub) || 'choose who takes this on — it\'ll pull them off whatever they\'re currently doing';
   renderAssignList();
   assignModal.hidden = false;
+  // [Pause] skipPause: used when a queue (see operationalAssignQueue below)
+  // already paused once for the whole sequence — avoids double-counting
+  // pauseDepth per queued item, which would leave the game stuck paused
+  // after the last one closes.
+  if(!(opts && opts.skipPause)) pauseGame();
 }
 function closeAssignPicker(){
   assignModal.hidden = true;
   pendingAssign = null;
+  // [Pause] if an operational-assignment queue is mid-sequence, closing
+  // the current prompt advances to the next queued item instead of fully
+  // resuming — resumeGame() only fires once the whole queue is drained.
+  // Empty queue (every other use of this modal) behaves exactly as before.
+  if(operationalAssignQueue.length > 0) advanceOperationalAssignQueue();
+  else resumeGame();
 }
 function renderAssignList(){
   if(!pendingAssign) return;
@@ -4379,6 +4463,7 @@ function confirmDialog(message, title){
       modal.setAttribute('hidden','');
       yesBtn.removeEventListener('click', onYes);
       noBtn.removeEventListener('click', onNo);
+      resumeGame(); // [Pause] fires on either Yes or No — both routes through here
       resolve(result);
     };
     const onYes = () => cleanup(true);
@@ -4386,6 +4471,7 @@ function confirmDialog(message, title){
     yesBtn.addEventListener('click', onYes);
     noBtn.addEventListener('click', onNo);
     modal.removeAttribute('hidden');
+    pauseGame(); // [Pause]
   });
 }
 
@@ -5896,6 +5982,7 @@ function resolveArrival(accept){
   }
   pendingArrival = null;
   document.getElementById('arrivalModal').hidden = true;
+  resumeGame(); // [Pause]
 }
 
 function openArrivalModal(){
@@ -5911,6 +5998,7 @@ function openArrivalModal(){
     ${cropText}
   `;
   document.getElementById('arrivalModal').hidden = false;
+  pauseGame(); // [Pause]
 }
 
 /* =========================================================
@@ -6424,16 +6512,32 @@ function diamondPath(cx, cy, tw, th){
   ctx.closePath();
 }
 
+// [Pause] a blocking modal (assign picker, gift, arrival, confirm) sets
+// this true — see pauseGame()/resumeGame() below, called from each
+// modal's own open/close points. lastFrameTime still updates every
+// frame regardless of pause (below), so unpausing doesn't produce a
+// huge stale dt representing all the paused wall-clock time.
+let gamePaused = false;
+let pauseDepth = 0; // more than one blocking modal could theoretically stack — only resume once every opener has closed
+function pauseGame(){ pauseDepth++; gamePaused = true; updatePauseIndicator(); }
+function resumeGame(){ pauseDepth = Math.max(0, pauseDepth-1); if(pauseDepth===0) gamePaused = false; updatePauseIndicator(); }
+function updatePauseIndicator(){
+  const el = document.getElementById('pauseIndicator');
+  if(el) el.hidden = !gamePaused;
+}
+
 function render(now){
   const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // clamp to avoid tab-switch jumps
   lastFrameTime = now;
-  advanceGameTime(dt);   // [Phase 7] real calendar tick — no-op until founded
-  updateZombies(dt);     // [Phase 8a] atmospheric perimeter — no-op until founded
-  updateIncursions(dt);  // [Phase 8b] real threat resolution — inert until Phase 11 unlocks it
-  updateAnimals(dt);     // [Phase 9] livestock hunger/health/produce — no-op until founded
-  updateLivestockTribute(); // [Phase 9] runs off time.totalDays, not dt directly
-  updatePendingTalk(); // [Phase 11]
-  updateSurvivors(dt);
+  if(!gamePaused){
+    advanceGameTime(dt);   // [Phase 7] real calendar tick — no-op until founded
+    updateZombies(dt);     // [Phase 8a] atmospheric perimeter — no-op until founded
+    updateIncursions(dt);  // [Phase 8b] real threat resolution — inert until Phase 11 unlocks it
+    updateAnimals(dt);     // [Phase 9] livestock hunger/health/produce — no-op until founded
+    updateLivestockTribute(); // [Phase 9] runs off time.totalDays, not dt directly
+    updatePendingTalk(); // [Phase 11]
+    updateSurvivors(dt);
+  }
   updateClockHUD();
 
   const dpr = devicePixelRatio;
