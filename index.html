@@ -398,6 +398,14 @@
     letter-spacing:0.5px; text-transform:uppercase;
     opacity:0.55; margin:8px 0 3px;
   }
+  /* [Livestock panel redesign] .section-label was only ever scoped to
+     #infopanel — needed here too now that "Your Livestock" and
+     "Requests From Survivors" use the same label style. */
+  #livestockmenu .section-label{
+    font-family:'Cinzel', serif; font-size:10px; font-weight:700;
+    letter-spacing:0.5px; text-transform:uppercase;
+    opacity:0.55; margin:8px 0 3px; padding:0 6px;
+  }
 
   /* Survivor bar — hidden per request. Kept in the DOM rather than
      removed: renderSurvivorBar() is called from many places (founding,
@@ -576,21 +584,17 @@
     overflow:auto;
   }
   #livestockmenu[hidden]{ display:none; }
-  .livestock-request-row{
+  .livestock-request-row, .livestock-pen-row{
     padding:8px 6px; border-bottom:1px solid rgba(43,29,20,0.15);
     font-family:'EB Garamond', serif; font-size:12.5px;
   }
-  .livestock-request-row .lr-title{ font-weight:600; margin-bottom:3px; }
-  .livestock-request-row .lr-meta{
+  .lr-title{ font-weight:600; margin-bottom:3px; }
+  .lr-meta{
     font-family:'JetBrains Mono', monospace; font-size:11px; opacity:0.8; margin-bottom:5px;
   }
-  .livestock-request-row .lr-actions{ display:flex; gap:6px; }
-  #newLivestockRequestForm{
-    display:flex; flex-direction:column; gap:6px;
-    padding:8px 6px 4px; border-top:2px solid rgba(43,29,20,0.25); margin-top:6px;
-  }
-  #newLivestockRequestForm select, #newLivestockRequestForm input{
-    font-family:'EB Garamond', serif; font-size:12.5px;
+  .lr-actions{ display:flex; gap:6px; }
+  .pen-reassign-select{
+    font-family:'EB Garamond', serif; font-size:12px;
     padding:4px 6px; border:1px solid var(--ink); border-radius:4px;
     background:rgba(255,255,255,0.6);
   }
@@ -1550,6 +1554,7 @@ function onNewDay(derived){
 
   updateEventEngine(derived); // [Phase 10]
   updateAttractionAndProposals(); // [Phase 11]
+  updateAutonomousLivestockRequests(); // [Livestock panel redesign follow-up]
   updateMarriages(); // [Phase 11]
   updateAging(); // [Phase 11]
   updatePregnancies(); // [Phase 11]
@@ -3407,10 +3412,43 @@ function renderLivestockMenu(){
   const menu = document.getElementById('livestockmenu');
   const pending = livestockRequests.filter(r => r.status === 'pending' || r.status === 'postponed');
 
+  // --- Your Livestock: an actual overview, didn't exist before this redesign ---
+  const completePens = buildings.filter(b => b.isComplete && BUILDING_TYPES[b.type].species);
+  const speciesTally = {};
+  for(const b of completePens){
+    const penAnimals = (b.animalIds||[]).map(id => animals.find(a=>a.id===id)).filter(Boolean);
+    const sp = BUILDING_TYPES[b.type].species;
+    speciesTally[sp] = (speciesTally[sp]||0) + penAnimals.length;
+  }
+  const tallyHtml = Object.keys(speciesTally).length
+    ? `<div class="row" style="opacity:0.85;">${Object.entries(speciesTally).map(([sp,n]) => `${n} ${ANIMAL_SPECIES[sp].name.toLowerCase()}${n===1?'':'s'}`).join(' · ')}</div>`
+    : '';
+  const eligibleCaretakers = survivors.filter(s => !s.isFounder && s.health > 0);
+  const penRows = completePens.length ? completePens.map(b => {
+    const def = BUILDING_TYPES[b.type];
+    const penAnimals = (b.animalIds||[]).map(id => animals.find(a=>a.id===id)).filter(Boolean);
+    const avgHealth = penAnimals.length ? Math.round(penAnimals.reduce((s,a)=>s+a.health,0)/penAnimals.length) : 0;
+    const avgHunger = penAnimals.length ? Math.round(penAnimals.reduce((s,a)=>s+a.hunger,0)/penAnimals.length) : 0;
+    const caretakerId = penAnimals.length ? penAnimals[0].caretakerId : null;
+    const caretaker = caretakerId != null ? survivors.find(s=>s.id===caretakerId) : null;
+    const reassignOptions = [`<option value="">Yourself (founder)</option>`]
+      .concat(eligibleCaretakers.map(s => `<option value="${s.id}" ${s.id===caretakerId?'selected':''}>${s.name}</option>`));
+    return `
+      <div class="livestock-pen-row">
+        <div class="lr-title">${def.name} — ${penAnimals.length}/${b.livestockCapacity} ${ANIMAL_SPECIES[def.species].name.toLowerCase()}s</div>
+        <div class="lr-meta">avg health ${avgHealth}% · avg hunger ${avgHunger}% · cared for by ${caretaker ? caretaker.name : 'yourself'}</div>
+        <div class="lr-actions" style="align-items:center;">
+          <select class="pen-reassign-select" data-building="${b.id}" style="flex:1;">${reassignOptions.join('')}</select>
+          <button class="mini-btn pen-reassign-btn" data-building="${b.id}">Reassign</button>
+        </div>
+      </div>
+    `;
+  }).join('') : `<div class="row" style="padding:6px 6px 10px; opacity:0.75;">no livestock yet — build a pen from the Build menu</div>`;
+
+  // --- Requests From Survivors: unchanged decision flow ---
   const requestRows = pending.length ? pending.map(r => {
     const speciesName = ANIMAL_SPECIES[r.species].name;
     const kindLabel = r.kind === 'build-pen' ? `Build a ${speciesName} pen` : r.kind === 'expand' ? `Expand a ${speciesName} pen` : `Start raising ${speciesName}s`;
-    // [Phase 9, redesigned] named by the actual requester now, House shown as context only
     return `
       <div class="livestock-request-row">
         <div class="lr-title">${survivorName(r.requestingSurvivorId)} (${familyName(r.familyId)}) — ${kindLabel}</div>
@@ -3422,52 +3460,31 @@ function renderLivestockMenu(){
         </div>
       </div>
     `;
-  }).join('') : `<div class="row" style="padding:6px 6px 10px;">no pending requests</div>`;
-
-  // species already raised (has a complete pen) get "expand" as an option instead of "build/start-raising" again
-  const raisedSpecies = new Set(buildings.filter(b => b.isComplete && BUILDING_TYPES[b.type].species).map(b => BUILDING_TYPES[b.type].species));
-  const speciesOptions = Object.values(ANIMAL_SPECIES).map(s => `<option value="${s.id}">${s.name}${raisedSpecies.has(s.id) ? ' (expand existing pen)' : ' (new pen)'}</option>`).join('');
-  const resourceOptions = ['food','wood','stone','fiber'].map(r => `<option value="${r}">${r}</option>`).join('');
-  // [Phase 9, redesigned] scenario 1 means the founder never "asks" — this
-  // dropdown only offers survivors who actually would need to.
-  const askers = survivors.filter(s => !s.isFounder);
-  const askerOptions = askers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  }).join('') : `<div class="row" style="padding:6px 6px 10px; opacity:0.75;">no pending requests</div>`;
 
   menu.innerHTML = `
+    <div class="section-label">Your Livestock</div>
+    ${tallyHtml}
+    ${penRows}
+    <div class="section-label" style="margin-top:10px;">Requests From Survivors</div>
     ${requestRows}
-    ${askers.length ? `
-    <form id="newLivestockRequestForm">
-      <div class="row" style="opacity:0.75; font-style:italic;">raise a request on behalf of:</div>
-      <select id="lrSurvivor">${askerOptions}</select>
-      <select id="lrSpecies">${speciesOptions}</select>
-      <div style="display:flex; gap:6px;">
-        <select id="lrTributeResource" style="flex:1;">${resourceOptions}</select>
-        <input id="lrTributeAmount" type="number" min="1" value="3" style="width:60px;">
-      </div>
-      <button type="submit" class="mini-btn">Submit Request</button>
-    </form>
-    ` : ''}
   `;
 
+  menu.querySelectorAll('.pen-reassign-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const buildingId = parseInt(btn.dataset.building, 10);
+      const select = menu.querySelector(`.pen-reassign-select[data-building="${buildingId}"]`);
+      const val = select.value;
+      reassignPenCaretaker(buildingId, val === '' ? null : parseInt(val, 10));
+      renderLivestockMenu();
+    });
+  });
   menu.querySelectorAll('.lr-decide').forEach(btn => {
     btn.addEventListener('click', () => {
       const req = livestockRequests.find(r => r.id === parseInt(btn.dataset.id, 10));
       if(req) resolveLivestockRequest(req, btn.dataset.decision);
       renderLivestockMenu();
     });
-  });
-  const form = document.getElementById('newLivestockRequestForm');
-  if(form) form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const requestingSurvivorId = parseInt(document.getElementById('lrSurvivor').value, 10);
-    const species = document.getElementById('lrSpecies').value;
-    const tributeResource = document.getElementById('lrTributeResource').value;
-    const tributeAmount = Math.max(1, parseInt(document.getElementById('lrTributeAmount').value, 10) || 1);
-    const hasExistingPen = buildings.find(b => b.isComplete && BUILDING_TYPES[b.type].species === species);
-    const kind = hasExistingPen ? 'expand' : 'build-pen';
-    const req = createLivestockRequest(requestingSurvivorId, kind, species, tributeResource, tributeAmount, hasExistingPen ? hasExistingPen.id : null);
-    livestockRequests.push(req);
-    renderLivestockMenu();
   });
 }
 
@@ -3516,6 +3533,44 @@ function advanceGiftQueue(){
   giftQueue.shift();
   if(giftQueue.length > 0) openGiftModal();
   else { document.getElementById('giftModal').hidden = true; resumeGame(); }
+}
+
+/* [Livestock panel redesign] lets the founder re-gift a pen after the
+   fact — the original gift modal only ever fires once, at construction
+   completion, with no way back if the caretaker dies or the founder
+   just changes their mind later. Same granularity as that original
+   decision: caretaker lives per-animal, not per-pen, so this bulk-
+   updates every animal currently in the pen at once, not one at a time.
+   Carries a real mood consequence, same weight as approving/rejecting a
+   livestock request — losing or gaining standing responsibility over
+   settlement livestock isn't neutral. The founder is excluded from
+   either swing since this is their own act, not something happening to
+   them from someone else. */
+function reassignPenCaretaker(buildingId, newCaretakerId){
+  const b = buildings.find(x => x.id === buildingId);
+  if(!b) return;
+  const newCaretaker = newCaretakerId != null ? survivors.find(s => s.id === newCaretakerId) : null;
+  const familyId = newCaretaker ? newCaretaker.familyId : (families[0] ? families[0].id : null);
+  const penAnimals = (b.animalIds||[]).map(id => animals.find(a=>a.id===id)).filter(Boolean);
+  const oldCaretakerId = penAnimals.length ? penAnimals[0].caretakerId : null;
+  const oldCaretaker = oldCaretakerId != null ? survivors.find(s => s.id === oldCaretakerId) : null;
+
+  for(const a of penAnimals){
+    a.caretakerId = newCaretakerId != null ? newCaretakerId : null;
+    a.familyId = familyId;
+  }
+
+  if(oldCaretaker && !oldCaretaker.isFounder && oldCaretaker.id !== newCaretakerId){
+    oldCaretaker.mood = Math.max(0, oldCaretaker.mood + LIVESTOCK_REQUEST_REFUSE_MOOD);
+  }
+  if(newCaretaker && !newCaretaker.isFounder){
+    newCaretaker.mood = Math.min(100, newCaretaker.mood + LIVESTOCK_REQUEST_APPROVE_MOOD);
+    newCaretaker.needs.purpose = Math.min(100, newCaretaker.needs.purpose + LIVESTOCK_REQUEST_APPROVE_PURPOSE);
+  }
+
+  const def = BUILDING_TYPES[b.type];
+  flashAlert(`${def.name} reassigned to ${newCaretaker ? newCaretaker.name : 'the founder'}.`);
+  logChronicle('event', `${def.name} reassigned`, `now cared for by ${newCaretaker ? newCaretaker.name : 'the founder'}`);
 }
 document.getElementById('livestockToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('livestockmenu');
@@ -6330,6 +6385,80 @@ function updateAttractionAndProposals(){
         }
       }
     }
+  }
+}
+
+/* =========================================================
+   === AUTONOMOUS LIVESTOCK REQUESTS (Livestock panel redesign follow-up) ===
+   Closes the gap named in GAME_PLAN.md's 7.9a: survivors previously had
+   no way to actually ask for livestock on their own — the only thing
+   that ever called createLivestockRequest() was a manual form (now
+   removed). Mirrors updateAttractionAndProposals()'s shape exactly, per
+   the plan's own note on what this was waiting for: a daily per-survivor
+   check with a chance that scales with need/idleness/trait, generating
+   a real pending request without the player role-playing it themselves.
+   No original numbers exist to design against, same as Phase 9's
+   original tuning didn't — flagged for audit, not presented as verified.
+   ========================================================= */
+const LIVESTOCK_REQUEST_BASE_CHANCE_PER_DAY = 0.025;
+// below this purpose level, wanting a project of their own starts
+// pushing the chance up — mirrors the same LOW_PURPOSE reasoning used
+// nowhere else yet, but consistent with purpose being a real tracked need
+const LIVESTOCK_REQUEST_LOW_PURPOSE_THRESHOLD = 40;
+// trait affinity — greenthumb ("a natural at tending crops") is the
+// closest existing trait to livestock care, no dedicated animal-trait
+// exists in TRAIT_POOL; hardworker/lazy modulate general willingness to
+// take on more responsibility
+const LIVESTOCK_REQUEST_TRAIT_MULTIPLIER = { greenthumb:2.2, hardworker:1.4, lazy:0.4 };
+
+function hasUnresolvedLivestockRequest(survivorId){
+  return livestockRequests.some(r => r.requestingSurvivorId === survivorId && (r.status === 'pending' || r.status === 'postponed'));
+}
+
+function updateAutonomousLivestockRequests(){
+  if(!founded) return;
+  const eligible = survivors.filter(s => !s.isFounder && s.health > 0 && s.stage !== 'child');
+  const raisedPens = buildings.filter(b => b.isComplete && BUILDING_TYPES[b.type].species);
+
+  for(const c of eligible){
+    if(hasUnresolvedLivestockRequest(c.id)) continue;
+
+    let chance = LIVESTOCK_REQUEST_BASE_CHANCE_PER_DAY;
+    if(c.needs.purpose < LIVESTOCK_REQUEST_LOW_PURPOSE_THRESHOLD){
+      chance *= 1 + (LIVESTOCK_REQUEST_LOW_PURPOSE_THRESHOLD - c.needs.purpose) / 40;
+    }
+    if(!c.role && !c.job) chance *= 1.5; // idle survivors have the bandwidth to ask
+    for(const t of c.traits){
+      if(LIVESTOCK_REQUEST_TRAIT_MULTIPLIER[t.id] != null) chance *= LIVESTOCK_REQUEST_TRAIT_MULTIPLIER[t.id];
+    }
+    if(survivorRng() >= chance) continue;
+
+    // prefer expanding something already raised about half the time —
+    // otherwise pick a species at random, falling back to 'expand' if
+    // that species already has a pen
+    let species, kind, targetBuildingId = null;
+    if(raisedPens.length && survivorRng() < 0.5){
+      const pickPen = raisedPens[Math.floor(survivorRng()*raisedPens.length)];
+      species = BUILDING_TYPES[pickPen.type].species;
+      kind = 'expand';
+      targetBuildingId = pickPen.id;
+    } else {
+      const speciesIds = Object.keys(ANIMAL_SPECIES);
+      species = speciesIds[Math.floor(survivorRng()*speciesIds.length)];
+      const existingPen = raisedPens.find(b => BUILDING_TYPES[b.type].species === species);
+      if(existingPen){ kind = 'expand'; targetBuildingId = existingPen.id; }
+      else kind = 'build-pen';
+    }
+
+    const tributeResourceOptions = ['food','wood','stone','fiber'];
+    const tributeResource = tributeResourceOptions[Math.floor(survivorRng()*tributeResourceOptions.length)];
+    const tributeAmount = 2 + Math.floor(survivorRng()*4); // 2-5, modest, no original number
+
+    const req = createLivestockRequest(c.id, kind, species, tributeResource, tributeAmount, targetBuildingId);
+    livestockRequests.push(req);
+    const speciesName = ANIMAL_SPECIES[species].name.toLowerCase();
+    flashAlert(`${c.name} asks permission to ${kind==='expand'?'expand their':'raise'} ${speciesName}${kind==='expand'?' pen':'s'}.`);
+    logChronicle('event', `${c.name} requests to raise ${speciesName}s`);
   }
 }
 
