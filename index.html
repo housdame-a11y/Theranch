@@ -114,12 +114,13 @@
   /* Top title bar */
   #titlebar{
     position:absolute; top:0; left:0; right:0;
-    display:flex; align-items:center; justify-content:space-between;
-    /* max() keeps the normal padding on devices with no notch/cutout, and
-       grows it on devices that do (real landscape phones/tablets, or a
-       host that reports safe-area insets) so the title/resources never
-       sit under a camera cutout or status bar. */
-    padding:10px max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
+    display:flex; align-items:flex-start; justify-content:space-between;
+    /* Top padding matches #settingsbar's `top` (max(14px, safe-area-inset))
+       exactly, and #hudpanel below is a fixed 44px tall (same as the
+       settings button) — that combination is what actually lines up the
+       clock/resources row with the settings button, rather than eyeballing
+       a single offset that only happens to work for one line-height. */
+    padding:max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
     background:linear-gradient(180deg, rgba(36,24,18,0.92), rgba(36,24,18,0));
     pointer-events:none;
     z-index:5;
@@ -162,7 +163,7 @@
   }
   #hudpanel{
     display:flex; align-items:center; gap:12px;
-    padding:6px 14px;
+    height:44px; padding:0 14px; box-sizing:border-box;
     pointer-events:auto;
   }
   .hud-divider{
@@ -218,10 +219,34 @@
   .dot.tools{ background:#9a9284; }
   .dot.fiber{ background:#b8a96a; }
   @media (max-width: 560px){
-    #hudpanel{ gap:8px; padding:5px 10px; }
+    #hudpanel{ gap:8px; padding:5px 10px; height:35px; }
     #resourcebar{ gap:8px; }
     .resource{ font-size:12px; }
     #clockpanel{ font-size:11px; }
+    /* [UI cleanup] zoom +/- buttons removed on phone-sized viewports —
+       two-finger pinch zoom (see the touchmove handler) already covers
+       this on touch devices, so the buttons are redundant screen space
+       on exactly the devices where space is tightest. Desktop keeps
+       them, since a mouse has no pinch gesture. */
+    #zoomcontrols{ display:none; }
+
+    /* [Mobile scale-down] the six circular icon buttons — Settings,
+       Build, Dynasty, Chronicle, Livestock, Roster — and their icons,
+       at 80% size (44px -> 35px, 24px icon -> 19px) to save space on
+       phones. #hudpanel above is shrunk to the same 35px height so it
+       stays on the same line as Settings — the "same line" alignment
+       relies on matching top offset + height, so both need to shrink
+       by the same amount together or they'd drift out of line again. */
+    #settingsToggleBtn, #buildToggleBtn, #dynastyToggleBtn,
+    #chronicleToggleBtn, #livestockToggleBtn, #jobsToggleBtn{
+      width:35px; height:35px;
+    }
+    #settingsToggleBtn svg, #jobsToggleBtn svg, #chronicleToggleBtn svg{
+      width:19px; height:19px;
+    }
+    #buildToggleBtn img, #dynastyToggleBtn img, #livestockToggleBtn img{
+      height:19px;
+    }
   }
 
   /* Bottom UI cluster: info panel (left) / survivor bar (center) / build+zoom (right).
@@ -330,27 +355,6 @@
     font-family:'JetBrains Mono', monospace; font-size:11.5px;
     color:var(--ink); opacity:0.75;
   }
-
-  /* Compass / legend, top-left — sits directly under THE RANCH logo/title
-     block in #titlebar. */
-  #legend{
-    position:absolute; top:86px; left:18px;
-    padding:10px 14px;
-    font-size:12.5px;
-    z-index:5;
-    display:flex; flex-direction:column; gap:4px;
-  }
-  #legend[hidden]{ display:none; }
-  #legend .title{
-    font-family:'Cinzel', serif; font-weight:700; font-size:12px;
-    letter-spacing:0.5px; text-transform:uppercase;
-    color:var(--moss-dark); margin-bottom:2px;
-    cursor:pointer; user-select:none;
-  }
-  #legendItems{ display:flex; flex-direction:column; gap:4px; }
-  #legendItems.collapsed{ display:none; }
-  #legend .item{ display:flex; align-items:center; gap:7px; }
-  #legend .swatch{ width:11px; height:11px; border-radius:2px; border:1px solid rgba(0,0,0,0.3); }
 
   /* Survivor detail panel additions */
   #infopanel .traits{
@@ -485,7 +489,7 @@
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #buildToggleBtn svg{ width:24px; height:24px; display:block; }
+  #buildToggleBtn img{ height:24px; width:auto; display:block; }
   #buildToggleBtn:active{ transform:translateY(1px); }
   #buildmenu{
     display:flex; flex-direction:column; gap:6px;
@@ -577,7 +581,7 @@
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #livestockToggleBtn svg{ width:24px; height:24px; display:block; }
+  #livestockToggleBtn img{ height:24px; width:auto; display:block; }
   #livestockToggleBtn:active{ transform:translateY(1px); }
   #livestockmenu{
     padding:10px; max-width:min(88vw, 420px); max-height:55vh;
@@ -685,7 +689,7 @@
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #dynastyToggleBtn svg{ width:24px; height:24px; display:block; }
+  #dynastyToggleBtn img{ height:24px; width:auto; display:block; }
   #dynastyToggleBtn:active{ transform:translateY(1px); }
   #dynastymenu{
     padding:10px; max-width:min(88vw, 420px); max-height:55vh;
@@ -770,9 +774,15 @@
   .mini-btn.secondary{ color:var(--moss-dark); }
   .mini-btn + .mini-btn{ margin-left:6px; }
 
-  /* Alerts banner, top-center below the hint */
+  /* Alerts banner, top-center — was a fixed top:38px, which overlapped
+     the title/resources HUD (title h1+subtitle stack to ~52px tall, and
+     the hudpanel/forecast column on the right runs even taller when the
+     forecast warning line is showing). 84px clears both with room to
+     spare; env(safe-area-inset-top) is added on top since #titlebar's
+     own top padding grows by that same amount on notched devices, so
+     without it the banner would go back to overlapping there. */
   #alerts{
-    position:absolute; top:38px; left:50%; transform:translateX(-50%);
+    position:absolute; top:calc(84px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
     display:flex; flex-direction:column; align-items:center; gap:4px;
     z-index:6; pointer-events:none;
   }
@@ -786,11 +796,9 @@
   }
 
   /* Narrow/mobile viewports: the bottom cluster is the tightest fit, so trim
-     it first — smaller cards, tighter panel, and drop the legend since terrain
-     colors are also readable from the tile-inspect panel. */
+     it first — smaller cards, tighter panel. */
   @media (max-width: 560px){
-    #legend{ display:none; }
-    #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; }
+    #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; max-height:70vh; overflow-y:auto; }
     #infopanel .bar-label{ width:48px; }
     .survivor-card{ width:52px; }
     .survivor-card .cname{ max-width:46px; font-size:10px; }
@@ -1019,6 +1027,14 @@
     .build-option{ padding:5px 8px; gap:6px; }
     .bo-name{ font-size:12px; }
     .bo-cost{ font-size:10.5px; }
+    /* [Bugfix] same overflow as #buildmenu above, but for the survivor
+       detail view — it renders into #infopanel and is the single longest
+       thing that ever goes in there (name/status, traits, talk buttons,
+       skill bars, need bars, housing section), so on a short rotated-
+       landscape phone screen it ran taller than the viewport with no way
+       to reach the bottom. Capped and scrollable like every other
+       overflow-prone panel in this file. */
+    #infopanel{ max-height:56vh; overflow-y:auto; }
   }
   /* Very short viewports (small phones in the rotated landscape-lock view,
      roughly iPhone SE/older-Android width and below) — the 480px tier
@@ -1239,20 +1255,6 @@
   </div>
 </div>
 
-<div id="legend" class="panel" hidden>
-  <div class="title" id="legendToggle">Terrain</div>
-  <div id="legendItems">
-    <div class="item"><span class="swatch" style="background:#6b7f3e"></span>Grass</div>
-    <div class="item"><span class="swatch" style="background:#8a9c4a"></span>Tall Grass</div>
-    <div class="item"><span class="swatch" style="background:#2f4d28"></span>Forest</div>
-    <div class="item"><span class="swatch" style="background:#3f6b7a"></span>Water</div>
-    <div class="item"><span class="swatch" style="background:#8a8578"></span>Stone</div>
-    <div class="item"><span class="swatch" style="background:#a08454"></span>Dirt</div>
-    <div class="item"><span class="swatch" style="background:#6e6558"></span>Road</div>
-    <div class="item"><span class="swatch" style="background:#5c5248"></span>Ruin</div>
-  </div>
-</div>
-
 <div id="bottombar">
   <div id="infopanel" class="panel" hidden>
     <div class="title">Wilderness</div>
@@ -1284,15 +1286,7 @@
     <!-- [Phase 9] -->
     <div id="livestockbar" hidden>
       <button id="livestockToggleBtn" class="panel toggle-btn" aria-label="Livestock" title="Livestock">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <!-- Goat-head glyph, flat line-art filled with var(--ink) — same
-               visual style as the settings gear icon. -->
-          <ellipse cx="50" cy="58" rx="24" ry="26" fill="var(--ink)"/>
-          <path d="M 32,34 L 22,12 L 36,20 Z" fill="var(--ink)"/>
-          <path d="M 68,34 L 78,12 L 64,20 Z" fill="var(--ink)"/>
-          <circle cx="41" cy="55" r="4.5" fill="var(--parchment)"/>
-          <circle cx="59" cy="55" r="4.5" fill="var(--parchment)"/>
-        </svg>
+        <img src="data:image/png;base64,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" alt="" aria-hidden="true">
       </button>
       <div id="livestockmenu" class="panel" hidden></div>
     </div>
@@ -1317,26 +1311,13 @@
     <!-- [Phase 11] -->
     <div id="dynastybar" hidden>
       <button id="dynastyToggleBtn" class="panel toggle-btn" aria-label="Dynasty" title="Dynasty">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <!-- Ring-with-gem glyph, flat line-art filled with var(--ink) —
-               same visual style as the settings gear icon. -->
-          <path d="M 50,42 L 41,54 L 50,66 L 59,54 Z" fill="var(--ink)"/>
-          <path d="M 50,20 A 32,32 0 1 1 49.9,20"
-                fill="none" stroke="var(--ink)" stroke-width="11"/>
-        </svg>
+        <img src="data:image/png;base64,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" alt="" aria-hidden="true">
       </button>
       <div id="dynastymenu" class="panel" hidden></div>
     </div>
     <div id="buildbar" hidden>
       <button id="buildToggleBtn" class="panel toggle-btn" aria-label="Build" title="Build">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <!-- Hammer glyph, flat line-art filled with var(--ink) — same
-               visual style as the settings gear icon. -->
-          <rect x="53" y="14" width="30" height="20" rx="3"
-                transform="rotate(45 68 24)" fill="var(--ink)"/>
-          <rect x="30" y="46" width="14" height="46" rx="4"
-                transform="rotate(45 37 69)" fill="var(--ink)"/>
-        </svg>
+        <img src="data:image/png;base64,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" alt="" aria-hidden="true">
       </button>
       <div id="buildmenu" class="panel" hidden></div>
       <span id="buildStatus"></span>
@@ -3701,13 +3682,6 @@ document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
   menu.hidden = !menu.hidden;
 });
 
-/* Terrain legend — click the "Terrain" header to collapse/expand the
-   color-key list. Header stays visible so it can be clicked again to
-   bring the list back. */
-document.getElementById('legendToggle').addEventListener('click', ()=>{
-  document.getElementById('legendItems').classList.toggle('collapsed');
-});
-
 /* =========================================================
    === ARRIVAL MODAL BUTTONS (Phase 10) ===
    ========================================================= */
@@ -4418,10 +4392,10 @@ foundBtn.addEventListener('click', () => {
   const chosenCompanions = [...selectedCompanionIdx].map(i => companionCandidates[i]);
   spawnFoundingParty(founderOpts, chosenCompanions);
   charterScreen.setAttribute('hidden','');
-  // [UI cleanup] the 5 gameplay toggle groups, plus settings/zoom/legend,
+  // [UI cleanup] the 5 gameplay toggle groups, plus settings/zoom,
   // are hidden until there's an actual game to show — this is founding
   // completing for real.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -4538,7 +4512,7 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
   document.getElementById('settingsmenu').setAttribute('hidden','');
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar']
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
@@ -4937,12 +4911,23 @@ window.addEventListener('mousemove', (e)=>{
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
   const { tx, ty } = screenToTile(sx, sy);
-  if(tx>=0 && tx<MAP.w && ty>=0 && ty<MAP.h){
-    hoveredTile = MAP.tiles[ty*MAP.w+tx];
-  } else {
-    hoveredTile = null;
-  }
-  updateInfoPanel();
+  const newHoveredTile = (tx>=0 && tx<MAP.w && ty>=0 && ty<MAP.h) ? MAP.tiles[ty*MAP.w+tx] : null;
+  if(newHoveredTile === hoveredTile) return; // nothing actually changed — skip the render entirely
+  hoveredTile = newHoveredTile;
+  // Bug fix: this used to call updateInfoPanel() unconditionally on
+  // every single mousemove — which rebuilds the panel's entire innerHTML
+  // from scratch, tearing down and recreating any button inside it (like
+  // "Assign Mine Stone"). Confirmed by direct reproduction: moving the
+  // pointer toward that button while a tile was selected caused it to
+  // be destroyed/recreated out from under a real click attempt
+  // (Playwright's own retry log: "element was detached from the DOM,
+  // retrying"), which is exactly the "the tap disappears" symptom
+  // reported. hoveredTile is only ever *displayed* when nothing is
+  // selected (`selectedTile || hoveredTile`) — so a hover change is
+  // completely irrelevant to the panel's content whenever something IS
+  // selected, and re-rendering in that case only exists to break the UI
+  // the player is actively interacting with. Skipped entirely now.
+  if(!selectedSurvivor && !selectedTile) updateInfoPanel();
 });
 
 window.addEventListener('mouseup', ()=>{
@@ -7354,8 +7339,8 @@ async function performLoad(){
       survivorIdCounter = Math.max(...survivors.map(c=>c.id)) + 1;
       charterScreen.setAttribute('hidden','');
       // [UI cleanup] same as the founding path — a loaded save is also
-      // a real game, un-hide the gameplay toggles plus settings/zoom/legend.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','legend','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      // a real game, un-hide the gameplay toggles plus settings/zoom.
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
     }
 
