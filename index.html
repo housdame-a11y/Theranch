@@ -3936,6 +3936,11 @@ function applyOrientationLock(){
     else if(a === -90) cls = 'force-rotate-180';
     else if(a === 90) cls = 'force-rotate-none';
   }
+  // Skip the DOM write entirely when nothing changed — this now runs on
+  // a poll (twice a second) as well as on events, so a no-op call
+  // shouldn't force a style recalc every time it fires.
+  if(html.dataset.rotateLock === (cls || '')) return;
+  html.dataset.rotateLock = cls || '';
   html.classList.remove('force-rotate-cw','force-rotate-ccw','force-rotate-180','force-rotate-none');
   if(cls) html.classList.add(cls);
 }
@@ -3988,14 +3993,19 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize', resizeCanvasDelayed);
 }
 setInterval(() => {
-  const html = document.documentElement;
-  const hasClass = html.classList.contains('force-rotate-cw') || html.classList.contains('force-rotate-ccw')
-    || html.classList.contains('force-rotate-180') || html.classList.contains('force-rotate-none');
-  if(!hasClass && (screen.orientation || typeof window.orientation === 'number')) applyOrientationLock();
+  // [Bugfix] must run unconditionally, every tick — not just when no
+  // class is set yet. The earlier version only re-derived the rotation
+  // class when NONE was present, so once a class was applied for
+  // whichever orientation the app happened to load in, rotating the
+  // phone again during actual gameplay (where orientationchange/
+  // screen.orientation 'change' are the ones known not to fire
+  // reliably in this webview) left that first class stuck forever —
+  // this poll was the one thing supposed to catch that, and it didn't.
+  applyOrientationLock();
   const landscapeLock = isForcedLandscape();
   const expectedW = Math.round((landscapeLock ? window.innerHeight : window.innerWidth) * devicePixelRatio);
   if(Math.round(canvas.width) !== expectedW) resizeCanvas();
-}, 1000);
+}, 500);
 applyOrientationLock();
 resizeCanvas();
 
