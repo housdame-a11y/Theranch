@@ -77,9 +77,44 @@
      we rotate the whole document to always present landscape, regardless
      of how the device/window is actually held or sized. resizeCanvas() in
      the script below swaps window.innerWidth/innerHeight to match whenever
-     this rule is active — the two must stay in sync. */
+     a rotation class below is active — the two must stay in sync.
+
+     [Bugfix] A phone has FOUR physical orientation states — portrait
+     right-side-up, portrait upside-down, and two opposite landscape
+     states — not just "portrait vs landscape". A single fixed
+     `rotate(-90deg)` (the old version of this rule, gated only on the
+     CSS `orientation: portrait` media feature) only compensates
+     correctly for ONE of the two portrait states, and does nothing at
+     all for either landscape state — so menu/charter/gameplay (all
+     children of this rotated <html>) render sideways or mirrored in
+     three out of four physical rotations, "fixed" only by rotating the
+     phone back to the one state the rule assumed. These four classes
+     are applied by applyOrientationLock() in the script below, which
+     reads the actual sub-state (screen.orientation.type, with a
+     window.orientation fallback) instead of guessing. Class selectors
+     beat the plain-tag `html{...}` base rule on specificity regardless
+     of source order, so whichever class is present always wins. */
+  html.force-rotate-cw, html.force-rotate-ccw{
+    position:fixed; top:50%; left:50%;
+    width:100vh; width:100dvh;
+    height:100vw;
+    overflow-x:hidden;
+    transform-origin:center center;
+  }
+  html.force-rotate-cw{ transform:translate(-50%,-50%) rotate(-90deg); }
+  html.force-rotate-ccw{ transform:translate(-50%,-50%) rotate(90deg); }
+  html.force-rotate-180{
+    position:fixed; top:50%; left:50%;
+    width:100%;
+    height:100%; height:100dvh;
+    transform-origin:center center;
+    transform:translate(-50%,-50%) rotate(180deg);
+  }
+  /* Fallback only for the rare case where the script below can't read
+     ANY orientation API — same single-angle guess the app always made,
+     better than nothing but still only correct for one portrait state. */
   @media screen and (orientation: portrait){
-    html{
+    html:not(.force-rotate-cw):not(.force-rotate-ccw):not(.force-rotate-180):not(.force-rotate-none){
       transform: rotate(-90deg);
       transform-origin: left top;
       width: 100vh; width: 100dvh;
@@ -3877,7 +3912,37 @@ const ctx = canvas.getContext('2d');
    unrotated device dimensions though, so the canvas — and every screen-
    space calculation built on canvas.width/height elsewhere — has to swap
    them here or it renders sideways relative to what's on screen. */
+/* [Bugfix] Reads the actual physical orientation sub-state and applies
+   the matching force-rotate-* class from the CSS above — see that rule's
+   comment for why a single fixed angle isn't enough. Screen Orientation
+   API (screen.orientation.type) is preferred since it directly names all
+   four states; window.orientation (older iOS Safari) is the fallback,
+   also unambiguous (0/90/-90/180). If neither exists, no class is
+   applied and the CSS fallback rule (one-angle guess) takes over, same
+   behavior the app always had in that case. */
+function applyOrientationLock(){
+  const html = document.documentElement;
+  let cls = null;
+  const type = screen.orientation && screen.orientation.type;
+  if(type){
+    if(type === 'portrait-primary') cls = 'force-rotate-cw';
+    else if(type === 'portrait-secondary') cls = 'force-rotate-ccw';
+    else if(type === 'landscape-secondary') cls = 'force-rotate-180';
+    else if(type === 'landscape-primary') cls = 'force-rotate-none';
+  } else if(typeof window.orientation === 'number'){
+    const a = window.orientation;
+    if(a === 0) cls = 'force-rotate-cw';
+    else if(a === 180) cls = 'force-rotate-ccw';
+    else if(a === -90) cls = 'force-rotate-180';
+    else if(a === 90) cls = 'force-rotate-none';
+  }
+  html.classList.remove('force-rotate-cw','force-rotate-ccw','force-rotate-180','force-rotate-none');
+  if(cls) html.classList.add(cls);
+}
 function isForcedLandscape(){
+  const html = document.documentElement;
+  if(html.classList.contains('force-rotate-cw') || html.classList.contains('force-rotate-ccw')) return true;
+  if(html.classList.contains('force-rotate-180') || html.classList.contains('force-rotate-none')) return false;
   return window.matchMedia('(orientation: portrait)').matches;
 }
 function resizeCanvas(){
@@ -3905,9 +3970,10 @@ function resizeCanvas(){
 //     periodic safety check catches a rotation the events missed, without
 //     needing to know which host is misbehaving.
 function resizeCanvasDelayed(){
+  applyOrientationLock();
   resizeCanvas();
-  setTimeout(resizeCanvas, 60);
-  setTimeout(resizeCanvas, 250);
+  setTimeout(() => { applyOrientationLock(); resizeCanvas(); }, 60);
+  setTimeout(() => { applyOrientationLock(); resizeCanvas(); }, 250);
 }
 window.addEventListener('resize', resizeCanvasDelayed);
 window.addEventListener('orientationchange', resizeCanvasDelayed);
@@ -3922,10 +3988,15 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize', resizeCanvasDelayed);
 }
 setInterval(() => {
+  const html = document.documentElement;
+  const hasClass = html.classList.contains('force-rotate-cw') || html.classList.contains('force-rotate-ccw')
+    || html.classList.contains('force-rotate-180') || html.classList.contains('force-rotate-none');
+  if(!hasClass && (screen.orientation || typeof window.orientation === 'number')) applyOrientationLock();
   const landscapeLock = isForcedLandscape();
   const expectedW = Math.round((landscapeLock ? window.innerHeight : window.innerWidth) * devicePixelRatio);
   if(Math.round(canvas.width) !== expectedW) resizeCanvas();
 }, 1000);
+applyOrientationLock();
 resizeCanvas();
 
 /* world <-> screen conversion — isometric. Orthogonal world-pixel coords
