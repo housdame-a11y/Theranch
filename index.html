@@ -3889,15 +3889,43 @@ function resizeCanvas(){
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
 }
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', resizeCanvas);
+// [Bugfix] "app doesn't detect rotation, or only after moving the phone
+// again" — two real gaps in a purely event-driven resizeCanvas():
+//  1) Several mobile browsers/webviews fire 'orientationchange' BEFORE
+//     window.innerWidth/innerHeight actually update to the new
+//     orientation, so resizeCanvas() reads stale dimensions and paints
+//     at the wrong size — it looks undetected even though the event fired.
+//     Re-running resizeCanvas() again a beat later (after the browser has
+//     actually finished the rotation reflow) catches the correct values.
+//  2) Some embedded webviews (this app already special-cases one for
+//     window.confirm(), see confirmDialog()) don't reliably fire
+//     resize/orientationchange on rotation at all — they only end up
+//     resized as a side effect of some unrelated touch/scroll event later,
+//     which matches "only if the phone is moved a certain way". A cheap
+//     periodic safety check catches a rotation the events missed, without
+//     needing to know which host is misbehaving.
+function resizeCanvasDelayed(){
+  resizeCanvas();
+  setTimeout(resizeCanvas, 60);
+  setTimeout(resizeCanvas, 250);
+}
+window.addEventListener('resize', resizeCanvasDelayed);
+window.addEventListener('orientationchange', resizeCanvasDelayed);
+if(window.screen && window.screen.orientation){
+  window.screen.orientation.addEventListener('change', resizeCanvasDelayed);
+}
 // Entering/exiting fullscreen changes window.innerWidth/innerHeight but
 // doesn't always fire a plain 'resize' in every host — cover it directly.
-document.addEventListener('fullscreenchange', resizeCanvas);
-document.addEventListener('webkitfullscreenchange', resizeCanvas);
+document.addEventListener('fullscreenchange', resizeCanvasDelayed);
+document.addEventListener('webkitfullscreenchange', resizeCanvasDelayed);
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', resizeCanvas);
+  window.visualViewport.addEventListener('resize', resizeCanvasDelayed);
 }
+setInterval(() => {
+  const landscapeLock = isForcedLandscape();
+  const expectedW = Math.round((landscapeLock ? window.innerHeight : window.innerWidth) * devicePixelRatio);
+  if(Math.round(canvas.width) !== expectedW) resizeCanvas();
+}, 1000);
 resizeCanvas();
 
 /* world <-> screen conversion — isometric. Orthogonal world-pixel coords
