@@ -75,55 +75,27 @@
      factions) that needs horizontal room to lay panels side by side rather
      than stack them. Rather than build a second, cut-down portrait layout,
      we rotate the whole document to always present landscape, regardless
-     of how the device/window is actually held or sized. resizeCanvas() in
-     the script below swaps window.innerWidth/innerHeight to match whenever
-     a rotation class below is active — the two must stay in sync.
+     of how the device/window is actually held or sized.
 
-     [Bugfix] A phone has FOUR physical orientation states — portrait
-     right-side-up, portrait upside-down, and two opposite landscape
-     states — not just "portrait vs landscape". A single fixed
-     `rotate(-90deg)` (the old version of this rule, gated only on the
-     CSS `orientation: portrait` media feature) only compensates
-     correctly for ONE of the two portrait states, and does nothing at
-     all for either landscape state — so menu/charter/gameplay (all
-     children of this rotated <html>) render sideways or mirrored in
-     three out of four physical rotations, "fixed" only by rotating the
-     phone back to the one state the rule assumed. These four classes
-     are applied by applyOrientationLock() in the script below, which
-     reads the actual sub-state (screen.orientation.type, with a
-     window.orientation fallback) instead of guessing. Class selectors
-     beat the plain-tag `html{...}` base rule on specificity regardless
-     of source order, so whichever class is present always wins. */
-  html.force-rotate-cw, html.force-rotate-ccw{
-    position:fixed; top:50%; left:50%;
-    width:100vh; width:100dvh;
-    height:100vw;
-    overflow-x:hidden;
-    transform-origin:center center;
-  }
-  html.force-rotate-cw{ transform:translate(-50%,-50%) rotate(-90deg); }
-  html.force-rotate-ccw{ transform:translate(-50%,-50%) rotate(90deg); }
-  html.force-rotate-180{
-    position:fixed; top:50%; left:50%;
-    width:100%;
-    height:100%; height:100dvh;
-    transform-origin:center center;
-    transform:translate(-50%,-50%) rotate(180deg);
-  }
-  /* Fallback only for the rare case where the script below can't read
-     ANY orientation API — same single-angle guess the app always made,
-     better than nothing but still only correct for one portrait state. */
-  @media screen and (orientation: portrait){
-    html:not(.force-rotate-cw):not(.force-rotate-ccw):not(.force-rotate-180):not(.force-rotate-none){
-      transform: rotate(-90deg);
-      transform-origin: left top;
-      width: 100vh; width: 100dvh;
-      height: 100vw;
-      overflow-x: hidden;
-      position: fixed;
-      top: 100%;
-      left: 0;
-    }
+     [Bugfix] This used to be a plain `@media (orientation: portrait)`
+     rule, evaluated independently by the CSS engine — while the canvas
+     sizing in the script below decided landscape-vs-portrait separately
+     via JS (screen.orientation / matchMedia). In this app's embedded
+     webview those two independent checks could disagree, which showed up
+     as menu/charter only looking right in one physical rotation while
+     gameplay only looked right in the other. Now a single JS function
+     (syncOrientation(), in the script below) computes ONE decision from
+     window.innerWidth vs innerHeight and applies it to both this class
+     and the canvas buffer size in the same call, so they can't diverge. */
+  html.force-rotate{
+    transform: rotate(-90deg);
+    transform-origin: left top;
+    width: 100vh; width: 100dvh;
+    height: 100vw;
+    overflow-x: hidden;
+    position: fixed;
+    top: 100%;
+    left: 0;
   }
   #world{
     position:absolute; inset:0;
@@ -3912,46 +3884,34 @@ const ctx = canvas.getContext('2d');
    unrotated device dimensions though, so the canvas — and every screen-
    space calculation built on canvas.width/height elsewhere — has to swap
    them here or it renders sideways relative to what's on screen. */
-/* [Bugfix] Reads the actual physical orientation sub-state and applies
-   the matching force-rotate-* class from the CSS above — see that rule's
-   comment for why a single fixed angle isn't enough. Screen Orientation
-   API (screen.orientation.type) is preferred since it directly names all
-   four states; window.orientation (older iOS Safari) is the fallback,
-   also unambiguous (0/90/-90/180). If neither exists, no class is
-   applied and the CSS fallback rule (one-angle guess) takes over, same
-   behavior the app always had in that case. */
-function applyOrientationLock(){
-  const html = document.documentElement;
-  let cls = null;
-  const type = screen.orientation && screen.orientation.type;
-  if(type){
-    if(type === 'portrait-primary') cls = 'force-rotate-cw';
-    else if(type === 'portrait-secondary') cls = 'force-rotate-ccw';
-    else if(type === 'landscape-secondary') cls = 'force-rotate-180';
-    else if(type === 'landscape-primary') cls = 'force-rotate-none';
-  } else if(typeof window.orientation === 'number'){
-    const a = window.orientation;
-    if(a === 0) cls = 'force-rotate-cw';
-    else if(a === 180) cls = 'force-rotate-ccw';
-    else if(a === -90) cls = 'force-rotate-180';
-    else if(a === 90) cls = 'force-rotate-none';
-  }
-  // Skip the DOM write entirely when nothing changed — this now runs on
-  // a poll (twice a second) as well as on events, so a no-op call
-  // shouldn't force a style recalc every time it fires.
-  if(html.dataset.rotateLock === (cls || '')) return;
-  html.dataset.rotateLock = cls || '';
-  html.classList.remove('force-rotate-cw','force-rotate-ccw','force-rotate-180','force-rotate-none');
-  if(cls) html.classList.add(cls);
+/* [Bugfix] Collapsed back to ONE function computing ONE boolean, applied
+   atomically to both the html rotation class and the canvas buffer size
+   in the same call. The previous version had menu/charter (driven by
+   which CSS class was set, itself derived from screen.orientation.type)
+   and gameplay (falling back to window.matchMedia when no class was
+   set) as two INDEPENDENTLY evaluated signals — and in this webview
+   they can genuinely disagree (matchMedia reads stale in some embedded
+   webviews, or screen.orientation.type is unsupported/inconsistent),
+   which is exactly what produced "menu/charter correct only when
+   horizontal, gameplay correct only when vertical" — each half was
+   trusting a different, occasionally-conflicting source of truth.
+   window.innerWidth vs innerHeight is the one signal that's always
+   live and always agrees with what's actually on screen — using it for
+   both, computed once per call, makes disagreement between the two
+   structurally impossible rather than just less likely. This trades
+   away distinguishing "upside-down" sub-states (portrait-secondary /
+   landscape-secondary) — not worth it if the fix for that was the
+   thing causing this worse, more visible bug. */
+function isPortraitPhysical(){
+  return window.innerWidth < window.innerHeight;
 }
-function isForcedLandscape(){
-  const html = document.documentElement;
-  if(html.classList.contains('force-rotate-cw') || html.classList.contains('force-rotate-ccw')) return true;
-  if(html.classList.contains('force-rotate-180') || html.classList.contains('force-rotate-none')) return false;
-  return window.matchMedia('(orientation: portrait)').matches;
+function syncOrientation(){
+  const portrait = isPortraitPhysical();
+  document.documentElement.classList.toggle('force-rotate', portrait);
+  resizeCanvas(portrait);
 }
-function resizeCanvas(){
-  const landscapeLock = isForcedLandscape();
+function resizeCanvas(landscapeLock){
+  if(landscapeLock === undefined) landscapeLock = isPortraitPhysical();
   const w = landscapeLock ? window.innerHeight : window.innerWidth;
   const h = landscapeLock ? window.innerWidth  : window.innerHeight;
   canvas.width = w * devicePixelRatio;
@@ -3963,51 +3923,39 @@ function resizeCanvas(){
 // again" — two real gaps in a purely event-driven resizeCanvas():
 //  1) Several mobile browsers/webviews fire 'orientationchange' BEFORE
 //     window.innerWidth/innerHeight actually update to the new
-//     orientation, so resizeCanvas() reads stale dimensions and paints
-//     at the wrong size — it looks undetected even though the event fired.
-//     Re-running resizeCanvas() again a beat later (after the browser has
-//     actually finished the rotation reflow) catches the correct values.
+//     orientation, so a single read gets stale dimensions — it looks
+//     undetected even though the event fired. Re-checking a beat later
+//     (after the browser finishes the rotation reflow) catches the
+//     correct values.
 //  2) Some embedded webviews (this app already special-cases one for
 //     window.confirm(), see confirmDialog()) don't reliably fire
 //     resize/orientationchange on rotation at all — they only end up
-//     resized as a side effect of some unrelated touch/scroll event later,
-//     which matches "only if the phone is moved a certain way". A cheap
-//     periodic safety check catches a rotation the events missed, without
-//     needing to know which host is misbehaving.
-function resizeCanvasDelayed(){
-  applyOrientationLock();
-  resizeCanvas();
-  setTimeout(() => { applyOrientationLock(); resizeCanvas(); }, 60);
-  setTimeout(() => { applyOrientationLock(); resizeCanvas(); }, 250);
+//     resized as a side effect of some unrelated touch/scroll event
+//     later, which matches "only if the phone is moved a certain way".
+//     The periodic poll below catches a rotation the events missed,
+//     without needing to know which host is misbehaving.
+function syncOrientationDelayed(){
+  syncOrientation();
+  setTimeout(syncOrientation, 60);
+  setTimeout(syncOrientation, 250);
 }
-window.addEventListener('resize', resizeCanvasDelayed);
-window.addEventListener('orientationchange', resizeCanvasDelayed);
+window.addEventListener('resize', syncOrientationDelayed);
+window.addEventListener('orientationchange', syncOrientationDelayed);
 if(window.screen && window.screen.orientation){
-  window.screen.orientation.addEventListener('change', resizeCanvasDelayed);
+  window.screen.orientation.addEventListener('change', syncOrientationDelayed);
 }
 // Entering/exiting fullscreen changes window.innerWidth/innerHeight but
 // doesn't always fire a plain 'resize' in every host — cover it directly.
-document.addEventListener('fullscreenchange', resizeCanvasDelayed);
-document.addEventListener('webkitfullscreenchange', resizeCanvasDelayed);
+document.addEventListener('fullscreenchange', syncOrientationDelayed);
+document.addEventListener('webkitfullscreenchange', syncOrientationDelayed);
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', resizeCanvasDelayed);
+  window.visualViewport.addEventListener('resize', syncOrientationDelayed);
 }
-setInterval(() => {
-  // [Bugfix] must run unconditionally, every tick — not just when no
-  // class is set yet. The earlier version only re-derived the rotation
-  // class when NONE was present, so once a class was applied for
-  // whichever orientation the app happened to load in, rotating the
-  // phone again during actual gameplay (where orientationchange/
-  // screen.orientation 'change' are the ones known not to fire
-  // reliably in this webview) left that first class stuck forever —
-  // this poll was the one thing supposed to catch that, and it didn't.
-  applyOrientationLock();
-  const landscapeLock = isForcedLandscape();
-  const expectedW = Math.round((landscapeLock ? window.innerHeight : window.innerWidth) * devicePixelRatio);
-  if(Math.round(canvas.width) !== expectedW) resizeCanvas();
-}, 500);
-applyOrientationLock();
-resizeCanvas();
+// Runs unconditionally every tick (cheap — toggle() and the width/height
+// assignments are no-ops when nothing changed) so a rotation the events
+// above missed entirely still gets caught within half a second.
+setInterval(syncOrientation, 500);
+syncOrientation();
 
 /* world <-> screen conversion — isometric. Orthogonal world-pixel coords
    (wx,wy) go through isoProject before camera pan/zoom/centering. */
