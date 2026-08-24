@@ -232,12 +232,14 @@
   .dot.food{ background:#8c9c3f; }
   .dot.tools{ background:#9a9284; }
   .dot.fiber{ background:#b8a96a; }
-  @media (max-width: 560px){
-    #hudpanel{ gap:8px; padding:5px 10px; height:33px; }
-    #resourcebar{ gap:8px; }
-    .resource{ font-size:12px; }
-    #clockpanel{ font-size:11px; }
-  }
+  /* [Bugfix] was @media (max-width: 560px) — measured against the raw
+     physical device width, which is wrong once the page is rotated (see
+     the syncOrientation() comment). .local-narrow is computed from the
+     actual on-screen width and stays correct in both orientations. */
+  html.local-narrow #hudpanel{ gap:8px; padding:5px 10px; height:33px; }
+  html.local-narrow #resourcebar{ gap:8px; }
+  html.local-narrow .resource{ font-size:12px; }
+  html.local-narrow #clockpanel{ font-size:11px; }
 
   /* Bottom UI cluster: info panel (left) / survivor bar (center) / build+zoom (right).
      A single flex row reserves space for each so they can't overlap regardless of
@@ -313,10 +315,14 @@
      specificity CSS falls back to source order, and whichever is later
      wins on a viewport where both apply. This was previously declared
      earlier in the file (before the base rule) and silently lost that
-     tiebreak, which is why the buttons never actually disappeared. */
-  @media (max-width: 560px){
-    #zoomcontrols{ display:none; }
-  }
+     tiebreak, which is why the buttons never actually disappeared.
+     [Bugfix] was @media (max-width: 560px) — physical-width-only, so it
+     silently stopped applying once the phone was rotated into landscape
+     (physical width then reports the LONG axis). Swapped to the local
+     (on-screen) narrow/short classes, which stay correct in both
+     orientations and also cover landscape phones directly, without
+     needing this rule at all. */
+  html.local-narrow #zoomcontrols, html.local-short #zoomcontrols{ display:none; }
 
   /* [Redesign] Settings — moved out of the bottom button bar and up to
      its own fixed spot in the top-right corner, clear of the title/clock/
@@ -512,7 +518,10 @@
        panel (#jobsmenu etc.) already has — with 4 pens added on top of
        the base building list, this silently overflowed off-screen in
        landscape orientation with no way to scroll to the rest. */
-    max-height:min(70vh, 480px); overflow-y:auto;
+    /* [Bugfix] was min(70vh, 480px) — vh always measures the physical
+       unrotated viewport, wrong once rotated. --local-vh (set in
+       syncOrientation()) is the on-screen height in real px. */
+    max-height:min(calc(var(--local-vh, 100vh) * 0.70), 480px); overflow-y:auto;
   }
   #buildmenu[hidden]{ display:none; }
   .build-option{
@@ -581,7 +590,10 @@
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
        fix, applied consistently across all five toggle-group menus. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(88vw, 480px); max-height:50vh;
+    /* [Bugfix] was min(88vw, 480px) / 50vh — raw viewport units, wrong
+       once rotated; swapped to the local (on-screen) custom properties. */
+    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 480px);
+    max-height:calc(var(--local-vh, 100vh) * 0.50);
     overflow:auto;
   }
   #jobsmenu[hidden]{ display:none; }
@@ -604,9 +616,12 @@
   #livestockToggleBtn:active{ transform:translateY(1px); }
   #livestockmenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
-       fix, applied consistently across all five toggle-group menus. */
+       fix, applied consistently across all five toggle-group menus.
+       [Bugfix] was min(88vw, 420px) / 55vh — swapped to local (on-screen)
+       custom properties, same reasoning as #jobsmenu above. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(88vw, 420px); max-height:55vh;
+    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
+    max-height:calc(var(--local-vh, 100vh) * 0.55);
     overflow:auto;
   }
   #livestockmenu[hidden]{ display:none; }
@@ -696,9 +711,12 @@
   #chronicleToggleBtn:active{ transform:translateY(1px); }
   #chroniclemenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
-       fix, applied consistently across all five toggle-group menus. */
+       fix, applied consistently across all five toggle-group menus.
+       [Bugfix] was min(88vw, 420px) / 55vh — swapped to local (on-screen)
+       custom properties, same reasoning as #jobsmenu above. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(88vw, 420px); max-height:55vh;
+    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
+    max-height:calc(var(--local-vh, 100vh) * 0.55);
     overflow:auto;
   }
   #chroniclemenu[hidden]{ display:none; }
@@ -728,24 +746,27 @@
      order, and the base rules are unconditional, so a mobile override
      declared earlier in the file loses that tiebreak and silently does
      nothing (this bit the #zoomcontrols rule earlier for the same
-     reason — same fix applies here). */
-  @media (max-width: 560px){
-    #settingsToggleBtn, #buildToggleBtn, #dynastyToggleBtn,
-    #chronicleToggleBtn, #livestockToggleBtn, #jobsToggleBtn{
-      width:33px; height:33px;
-    }
-    #settingsToggleBtn svg, #jobsToggleBtn svg, #chronicleToggleBtn svg{
-      width:18px; height:18px;
-    }
-    #buildToggleBtn img, #dynastyToggleBtn img, #livestockToggleBtn img{
-      height:18px;
-    }
+     reason — same fix applies here).
+     [Bugfix] was @media (max-width: 560px) — swapped to .local-narrow,
+     same reasoning as the HUD compacting rule above. */
+  html.local-narrow #settingsToggleBtn, html.local-narrow #buildToggleBtn, html.local-narrow #dynastyToggleBtn,
+  html.local-narrow #chronicleToggleBtn, html.local-narrow #livestockToggleBtn, html.local-narrow #jobsToggleBtn{
+    width:33px; height:33px;
+  }
+  html.local-narrow #settingsToggleBtn svg, html.local-narrow #jobsToggleBtn svg, html.local-narrow #chronicleToggleBtn svg{
+    width:18px; height:18px;
+  }
+  html.local-narrow #buildToggleBtn img, html.local-narrow #dynastyToggleBtn img, html.local-narrow #livestockToggleBtn img{
+    height:18px;
   }
   #dynastymenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
-       fix, applied consistently across all five toggle-group menus. */
+       fix, applied consistently across all five toggle-group menus.
+       [Bugfix] was min(88vw, 420px) / 55vh — swapped to local (on-screen)
+       custom properties, same reasoning as #jobsmenu above. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(88vw, 420px); max-height:55vh;
+    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
+    max-height:calc(var(--local-vh, 100vh) * 0.55);
     overflow:auto;
   }
   #dynastymenu[hidden]{ display:none; }
@@ -779,7 +800,8 @@
     background:var(--moss); color:var(--parchment); margin-right:5px;
   }
   .assign-panel{
-    width:100%; max-width:380px; max-height:78vh;
+    /* [Bugfix] was 78vh — swapped to the local (on-screen) height. */
+    width:100%; max-width:380px; max-height:calc(var(--local-vh, 100vh) * 0.78);
     display:flex; flex-direction:column;
     padding:16px 18px;
   }
@@ -850,18 +872,20 @@
   }
 
   /* Narrow/mobile viewports: the bottom cluster is the tightest fit, so trim
-     it first — smaller cards, tighter panel. */
-  @media (max-width: 560px){
-    #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; max-height:70vh; overflow-y:auto; }
-    #infopanel .bar-label{ width:48px; }
-    .survivor-card{ width:52px; }
-    .survivor-card .cname{ max-width:46px; font-size:10px; }
-    #buildmenu{ min-width:150px; padding:8px; }
-    .bo-name{ font-size:12px; }
-    #jobsmenu{ max-width:82vw; }
-    .roster-row{ font-size:11.5px; }
-    .assign-panel{ max-width:92vw; }
-  }
+     it first — smaller cards, tighter panel.
+     [Bugfix] was @media (max-width: 560px) with a raw 70vh cap — both
+     measure the physical unrotated viewport, wrong once rotated. Swapped
+     to .local-narrow plus --local-vh, same reasoning as the HUD rule
+     above. */
+  html.local-narrow #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; max-height:calc(var(--local-vh, 100vh) * 0.70); overflow-y:auto; }
+  html.local-narrow #infopanel .bar-label{ width:48px; }
+  html.local-narrow .survivor-card{ width:52px; }
+  html.local-narrow .survivor-card .cname{ max-width:46px; font-size:10px; }
+  html.local-narrow #buildmenu{ min-width:150px; padding:8px; }
+  html.local-narrow .bo-name{ font-size:12px; }
+  html.local-narrow #jobsmenu{ max-width:calc(var(--local-vw, 100vw) * 0.82); }
+  html.local-narrow .roster-row{ font-size:11.5px; }
+  html.local-narrow .assign-panel{ max-width:calc(var(--local-vw, 100vw) * 0.92); }
 
   /* =========================================================
      FOUNDING CHARTER — Phase 2 intro screen, shown over the (already-
@@ -927,7 +951,8 @@
   .charter-panel{
     width:100%; max-width:720px;
     padding:22px 26px 20px;
-    max-height:92vh; overflow-y:auto;
+    /* [Bugfix] was 92vh — swapped to the local (on-screen) height. */
+    max-height:calc(var(--local-vh, 100vh) * 0.92); overflow-y:auto;
   }
   .charter-header{ text-align:center; margin-bottom:14px; position:relative; }
   #charterBackBtn{
@@ -941,9 +966,8 @@
   }
   #charterBackBtn:hover{ background:rgba(232,217,181,0.85); }
   #charterBackBtn:active{ transform:translateY(1px); }
-  @media (max-width: 480px){
-    #charterBackBtn{ position:static; display:inline-block; margin-bottom:8px; }
-  }
+  /* [Bugfix] was @media (max-width: 480px) — swapped to .local-xnarrow. */
+  html.local-xnarrow #charterBackBtn{ position:static; display:inline-block; margin-bottom:8px; }
   .charter-header h2{
     margin:0 0 4px; font-family:'Cinzel', serif; font-weight:700;
     font-size:22px; letter-spacing:1px; color:var(--wood-mid);
@@ -1051,69 +1075,78 @@
     background:rgba(43,29,20,0.25);
   }
   .charter-step-dot.active{ background:var(--moss); }
-  @media (max-width: 560px){
-    .bg-grid{ grid-template-columns:repeat(2, 1fr); }
-    .companion-grid{ grid-template-columns:1fr; }
-  }
+  /* [Bugfix] was @media (max-width: 560px) — swapped to .local-narrow. */
+  html.local-narrow .bg-grid{ grid-template-columns:repeat(2, 1fr); }
+  html.local-narrow .companion-grid{ grid-template-columns:1fr; }
   /* Mobile landscape: the rotated viewport is short on the vertical axis
      (device width becomes the effective height), so the charter panel
      needs to shrink its chrome rather than rely on max-height scrolling
      alone — tighter padding/gaps/fonts keep each (now-shorter, since the
      charter is split across 3 steps) page visible without feeling cramped. */
-  @media (max-height: 480px), (max-width: 480px){
-    .charter-panel{ padding:14px 16px 12px; max-height:96vh; }
-    .charter-header{ margin-bottom:8px; }
-    .charter-header h2{ font-size:18px; }
-    .charter-header p{ font-size:12px; }
-    .charter-steps{ margin-bottom:8px; }
-    .charter-section{ margin-top:10px; }
-    .bg-card{ padding:6px 8px; }
-    .bg-card .bg-blurb{ font-size:10.5px; }
-    .companion-card{ padding:7px 9px; }
-    .charter-footer{ margin-top:12px; }
-    /* [Bugfix] short/landscape viewports — the charter rules above never
-       extended to in-game panels. #buildmenu is the one that actually
-       overflowed (longest list, 4 pens added on top of the base
-       buildings), so it's tightened specifically; a lower vh cap plus
-       denser rows so more of the list is visible before scrolling
-       kicks in. */
-    #buildmenu{ max-height:56vh; gap:4px; padding:8px; }
-    .build-option{ padding:5px 8px; gap:6px; }
-    .bo-name{ font-size:12px; }
-    .bo-cost{ font-size:10.5px; }
-    /* [Bugfix] same overflow as #buildmenu above, but for the survivor
-       detail view — it renders into #infopanel and is the single longest
-       thing that ever goes in there (name/status, traits, talk buttons,
-       skill bars, need bars, housing section), so on a short rotated-
-       landscape phone screen it ran taller than the viewport with no way
-       to reach the bottom. Capped and scrollable like every other
-       overflow-prone panel in this file. */
-    #infopanel{ max-height:56vh; overflow-y:auto; }
-  }
+  /* [Bugfix] was @media (max-height: 480px), (max-width: 480px) — this is
+     the rule most directly responsible for "founding charter isn't phone
+     view" on a physically-portrait phone: max-height there measures the
+     raw physical device height, which is TALL in portrait (not short),
+     so on exactly the phones this rule exists for, it silently never
+     fired — the charter kept its full desktop-sized chrome while
+     actually being squeezed into the short on-screen box after rotation.
+     .local-short/.local-xnarrow are computed from the on-screen
+     dimensions after rotation, so they fire correctly in both
+     orientations. */
+  html.local-short .charter-panel, html.local-xnarrow .charter-panel{ padding:14px 16px 12px; max-height:calc(var(--local-vh, 100vh) * 0.96); }
+  html.local-short .charter-header, html.local-xnarrow .charter-header{ margin-bottom:8px; }
+  html.local-short .charter-header h2, html.local-xnarrow .charter-header h2{ font-size:18px; }
+  html.local-short .charter-header p, html.local-xnarrow .charter-header p{ font-size:12px; }
+  html.local-short .charter-steps, html.local-xnarrow .charter-steps{ margin-bottom:8px; }
+  html.local-short .charter-section, html.local-xnarrow .charter-section{ margin-top:10px; }
+  html.local-short .bg-card, html.local-xnarrow .bg-card{ padding:6px 8px; }
+  html.local-short .bg-card .bg-blurb, html.local-xnarrow .bg-card .bg-blurb{ font-size:10.5px; }
+  html.local-short .companion-card, html.local-xnarrow .companion-card{ padding:7px 9px; }
+  html.local-short .charter-footer, html.local-xnarrow .charter-footer{ margin-top:12px; }
+  /* [Bugfix] short/landscape viewports — the charter rules above never
+     extended to in-game panels. #buildmenu is the one that actually
+     overflowed (longest list, 4 pens added on top of the base
+     buildings), so it's tightened specifically; a lower vh cap plus
+     denser rows so more of the list is visible before scrolling
+     kicks in. Was 56vh — swapped to --local-vh for the same reason as
+     everything else in this block. */
+  html.local-short #buildmenu, html.local-xnarrow #buildmenu{ max-height:calc(var(--local-vh, 100vh) * 0.56); gap:4px; padding:8px; }
+  html.local-short .build-option, html.local-xnarrow .build-option{ padding:5px 8px; gap:6px; }
+  html.local-short .bo-name, html.local-xnarrow .bo-name{ font-size:12px; }
+  html.local-short .bo-cost, html.local-xnarrow .bo-cost{ font-size:10.5px; }
+  /* [Bugfix] same overflow as #buildmenu above, but for the survivor
+     detail view — it renders into #infopanel and is the single longest
+     thing that ever goes in there (name/status, traits, talk buttons,
+     skill bars, need bars, housing section), so on a short rotated-
+     landscape phone screen it ran taller than the viewport with no way
+     to reach the bottom. Capped and scrollable like every other
+     overflow-prone panel in this file. */
+  html.local-short #infopanel, html.local-xnarrow #infopanel{ max-height:calc(var(--local-vh, 100vh) * 0.56); overflow-y:auto; }
   /* Very short viewports (small phones in the rotated landscape-lock view,
      roughly iPhone SE/older-Android width and below) — the 480px tier
      above still leaves the charter panel taller than the screen on these,
      forcing an internal scroll mid-step. Trim further so each of the
      three charter steps fits without scrolling. */
-  @media (max-height: 380px){
-    #charterScreen{ padding-top:6px; padding-bottom:6px; }
-    .charter-panel{ padding:10px 14px 10px; }
-    .charter-header{ margin-bottom:5px; }
-    .charter-header h2{ font-size:16px; }
-    .charter-header p{ display:none; }
-    .charter-steps{ margin-bottom:6px; }
-    .charter-section{ margin-top:7px; }
-    .charter-section .section-label{ margin-bottom:4px; }
-    .bg-grid{ gap:5px; }
-    .bg-card{ padding:5px 7px; }
-    .bg-card .bg-name{ font-size:11px; margin-bottom:1px; }
-    .bg-card .bg-blurb{ display:none; }
-    .companion-grid{ gap:5px; }
-    .companion-card{ padding:5px 7px; }
-    .companion-card .comp-meta{ margin:1px 0 2px; }
-    .charter-footer{ margin-top:8px; }
-    #foundBtn, #charterNextBtn{ padding:8px 16px; font-size:12px; }
-  }
+  /* [Bugfix] was @media (max-height: 380px) — measured against the
+     physical unrotated height, wrong once rotated (same root cause as
+     the 480px block above). Swapped to .local-xshort. */
+  html.local-xshort #charterScreen{ padding-top:6px; padding-bottom:6px; }
+  html.local-xshort .charter-panel{ padding:10px 14px 10px; }
+  html.local-xshort .charter-header{ margin-bottom:5px; }
+  html.local-xshort .charter-header h2{ font-size:16px; }
+  html.local-xshort .charter-header p{ display:none; }
+  html.local-xshort .charter-steps{ margin-bottom:6px; }
+  html.local-xshort .charter-section{ margin-top:7px; }
+  html.local-xshort .charter-section .section-label{ margin-bottom:4px; }
+  html.local-xshort .bg-grid{ gap:5px; }
+  html.local-xshort .bg-card{ padding:5px 7px; }
+  html.local-xshort .bg-card .bg-name{ font-size:11px; margin-bottom:1px; }
+  html.local-xshort .bg-card .bg-blurb{ display:none; }
+  html.local-xshort .companion-grid{ gap:5px; }
+  html.local-xshort .companion-card{ padding:5px 7px; }
+  html.local-xshort .companion-card .comp-meta{ margin:1px 0 2px; }
+  html.local-xshort .charter-footer{ margin-top:8px; }
+  html.local-xshort #foundBtn, html.local-xshort #charterNextBtn{ padding:8px 16px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -3905,10 +3938,45 @@ const ctx = canvas.getContext('2d');
 function isPortraitPhysical(){
   return window.innerWidth < window.innerHeight;
 }
+/* [Bugfix] "menu/founding charter wrong one way round, gameplay wrong the
+   other way round" — a second, deeper version of the disagreement the
+   rotation-lock bugfix above already fixed once for the rotation itself.
+   That fix made html.force-rotate and the canvas buffer agree on ONE
+   physical-orientation signal. But every OTHER piece of sizing in this
+   file — every raw vw/vh unit, and every @media (max-width/max-height)
+   query gating #mainMenuScreen, #charterScreen, #buildmenu, #jobsmenu,
+   etc. — is evaluated by the browser against the REAL, physical,
+   unrotated viewport. CSS transforms (html.force-rotate's rotate(-90deg))
+   never change what @media queries or vw/vh measure, only how the result
+   is painted. So when the phone is held portrait and force-rotate kicks
+   in, the on-screen box is (physical height x physical width) but every
+   vh/vw/@media rule in the stylesheet keeps measuring the UNROTATED
+   (physical width x physical height) — axes swapped relative to what's
+   actually on screen. The canvas was never affected because
+   resizeCanvas() already does its own swap by hand; the menu/charter/
+   panel CSS never got the equivalent treatment.
+   Fix: compute the LOCAL (on-screen, post-rotation) width/height here —
+   the one place rotation is already decided — and publish them as CSS
+   custom properties (--local-vw/--local-vh, in real px) plus threshold
+   classes on <html> (.local-narrow/.local-xnarrow/.local-short/
+   .local-xshort) that mirror the file's old physical-only breakpoints
+   (560/480/380px). Every vw/vh and @media rule that sizes a menu/charter/
+   panel element is swapped below to use these instead — one source of
+   truth, same discipline as the rotation fix above, instead of two
+   independently-evaluated signals that can silently disagree again. */
 function syncOrientation(){
   const portrait = isPortraitPhysical();
   document.documentElement.classList.toggle('force-rotate', portrait);
   resizeCanvas(portrait);
+  const localW = portrait ? window.innerHeight : window.innerWidth;
+  const localH = portrait ? window.innerWidth  : window.innerHeight;
+  const root = document.documentElement;
+  root.style.setProperty('--local-vw', localW + 'px');
+  root.style.setProperty('--local-vh', localH + 'px');
+  root.classList.toggle('local-narrow', localW <= 560);
+  root.classList.toggle('local-xnarrow', localW <= 480);
+  root.classList.toggle('local-short', localH <= 480);
+  root.classList.toggle('local-xshort', localH <= 380);
 }
 function resizeCanvas(landscapeLock){
   if(landscapeLock === undefined) landscapeLock = isPortraitPhysical();
