@@ -736,12 +736,46 @@
   }
   #dynastyToggleBtn img{ height:24px; width:auto; display:block; }
   #dynastyToggleBtn:active{ transform:translateY(1px); }
-  /* [Mobile scale-down] the six circular icon buttons — Settings, Build,
-     Dynasty, Chronicle, Livestock, Roster — and their icons, at 75% size
-     (44px -> 33px, 24px icon -> 18px) to save space on phones. #hudpanel
-     is shrunk to the same 33px height (see its own mobile rule above) so
-     it stays on the same line as Settings.
-     NOTE: this has to come AFTER all six base button/icon rules above —
+  /* [Phase 12a] Ministers panel — same shape as Dynasty/Chronicle/Livestock */
+  #ministersbar{
+    position:relative;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #ministersbar[hidden]{ display:none; }
+  #ministersToggleBtn{
+    width:44px; height:44px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:50%;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #ministersToggleBtn svg{ width:24px; height:24px; display:block; }
+  #ministersToggleBtn:active{ transform:translateY(1px); }
+  #ministersmenu{
+    position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
+    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
+    max-height:calc(var(--local-vh, 100vh) * 0.55);
+    overflow:auto;
+  }
+  #ministersmenu[hidden]{ display:none; }
+  .minister-card{
+    padding:8px 6px; border-bottom:1px solid rgba(43,29,20,0.15);
+    font-family:'EB Garamond', serif; font-size:12.5px;
+  }
+  .minister-card:last-child{ border-bottom:none; }
+  .minister-title{ font-weight:600; margin-bottom:3px; }
+  .minister-meta{
+    font-family:'JetBrains Mono', monospace; font-size:11px; opacity:0.8; margin-bottom:5px;
+  }
+  .minister-report{ font-style:italic; opacity:0.85; margin-bottom:5px; }
+  .minister-actions{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  /* [Mobile scale-down] the seven circular icon buttons — Settings, Build,
+     Dynasty, Chronicle, Livestock, Roster, Ministers — and their icons, at
+     75% size (44px -> 33px, 24px icon -> 18px) to save space on phones.
+     #hudpanel is shrunk to the same 33px height (see its own mobile rule
+     above) so it stays on the same line as Settings.
+     NOTE: this has to come AFTER all seven base button/icon rules above —
      equal-specificity selectors (#id or #id tag) fall back to source
      order, and the base rules are unconditional, so a mobile override
      declared earlier in the file loses that tiebreak and silently does
@@ -750,10 +784,12 @@
      [Bugfix] was @media (max-width: 560px) — swapped to .local-narrow,
      same reasoning as the HUD compacting rule above. */
   html.local-narrow #settingsToggleBtn, html.local-narrow #buildToggleBtn, html.local-narrow #dynastyToggleBtn,
-  html.local-narrow #chronicleToggleBtn, html.local-narrow #livestockToggleBtn, html.local-narrow #jobsToggleBtn{
+  html.local-narrow #chronicleToggleBtn, html.local-narrow #livestockToggleBtn, html.local-narrow #jobsToggleBtn,
+  html.local-narrow #ministersToggleBtn{
     width:33px; height:33px;
   }
-  html.local-narrow #settingsToggleBtn svg, html.local-narrow #jobsToggleBtn svg, html.local-narrow #chronicleToggleBtn svg{
+  html.local-narrow #settingsToggleBtn svg, html.local-narrow #jobsToggleBtn svg, html.local-narrow #chronicleToggleBtn svg,
+  html.local-narrow #ministersToggleBtn svg{
     width:18px; height:18px;
   }
   html.local-narrow #buildToggleBtn img, html.local-narrow #dynastyToggleBtn img, html.local-narrow #livestockToggleBtn img{
@@ -1410,6 +1446,20 @@
       </button>
       <div id="dynastymenu" class="panel" hidden></div>
     </div>
+    <!-- [Phase 12a] -->
+    <div id="ministersbar" hidden>
+      <button id="ministersToggleBtn" class="panel toggle-btn" aria-label="Ministers" title="Ministers">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <!-- Simple crown glyph, flat line-art filled with var(--ink) —
+               same visual style as the roster/chronicle icons. -->
+          <path d="M 12,38 L 28,58 L 50,30 L 72,58 L 88,38 L 82,74 L 18,74 Z" fill="var(--ink)"/>
+          <circle cx="12" cy="32" r="7" fill="var(--ink)"/>
+          <circle cx="50" cy="24" r="7" fill="var(--ink)"/>
+          <circle cx="88" cy="32" r="7" fill="var(--ink)"/>
+        </svg>
+      </button>
+      <div id="ministersmenu" class="panel" hidden></div>
+    </div>
     <div id="buildbar" hidden>
       <button id="buildToggleBtn" class="panel toggle-btn" aria-label="Build" title="Build">
         <img src="data:image/png;base64,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" alt="" aria-hidden="true">
@@ -1635,6 +1685,9 @@ function onNewDay(derived){
   updateAging(); // [Phase 11]
   updatePregnancies(); // [Phase 11]
   updateEducation(); // [Phase 11]
+  updateMinisterRequests(); // [Phase 12a]
+  updateMinisterRecruitment(); // [Phase 12a]
+  updateLoyalty(); // [Phase 12b]
 }
 
 function onSeasonChange(derived){
@@ -2024,12 +2077,15 @@ function resolveLivestockRequest(req, decision){
   const requester = survivors.find(s => s.id === req.requestingSurvivorId);
   if(decision === 'rejected' && requester){
     requester.mood = Math.max(0, requester.mood + LIVESTOCK_REQUEST_REFUSE_MOOD);
+    bumpLoyalty(req.requestingSurvivorId, LOYALTY_LIVESTOCK_REJECT); // [Phase 12b]
   }
   if(decision !== 'approved') return;
   req.lastTributeDay = time.totalDays;
   if(requester){
     requester.mood = Math.min(100, requester.mood + LIVESTOCK_REQUEST_APPROVE_MOOD);
     requester.needs.purpose = Math.min(100, requester.needs.purpose + LIVESTOCK_REQUEST_APPROVE_PURPOSE);
+    bumpLoyalty(req.requestingSurvivorId, LOYALTY_LIVESTOCK_APPROVE); // [Phase 12b]
+    bumpReputation('provider', REPUTATION_LIVESTOCK_APPROVE); // [Phase 12b]
   }
   if(req.kind === 'build-pen' || req.kind === 'start-raising'){
     // authorize placement — reuses the existing build-menu/placement flow
@@ -2125,6 +2181,431 @@ function seedPenWithAnimals(b, caretakerId){
     animals.push(a);
     b.animalIds.push(a.id);
   }
+}
+
+/* =========================================================
+   === MINISTERS & DELEGATION (Phase 12a, extended 12b, revised 12c) ===
+   Five departments now. Before a department has a minister: today's
+   fully-manual Assign flow, unchanged. Once a minister is appointed:
+   they periodically ask the founder for more workers (a
+   MinisterRequest), and once approved, a daily sweep pulls in
+   survivors who are currently idle with no `role` set — never
+   touching anyone already committed to something, whether the founder
+   set it or a different minister recruited them first. No modal, ever
+   — the founder resolves requests through this panel, on their own
+   time. The founder themself is never eligible to hold a ministry
+   (enforced in eligibleMinisterCandidates below) — they're who these
+   requests get resolved *by*, not a candidate to be delegated *to*.
+
+   Department -> mechanic mapping, one real design call worth flagging
+   plainly rather than assumed silently: the plan names "an empty pen"
+   as a Ranch Manager station alongside farm plots and blueprints, but
+   Phase 9's animals are passively simulated with no active walking job
+   for tending them — `caretakerId` is a custodial attribution, not a
+   job commitment. So head-rancher's "recruit" is reassignPenCaretaker's
+   exact existing mechanic (a pen whose animals have no caretaker), not
+   a new job type — consistent with the rest of the livestock system,
+   and it's *why* the `ranching` skill (reserved and unused since Phase 2,
+   flagged in the JOB_SKILL comment above) finally has a purpose. Farm
+   Manager -> 'farm', Build Manager -> 'build', Stores Manager (the
+   plan's "quartermaster") -> 'haul' specifically, not chop/mine too —
+   haul against ground piles has the same clean "open station" shape
+   farm plots and blueprints do (a fixed, countable, currently-unclaimed
+   target), where chop/mine's "targets" are just however many trees or
+   stone deposits happen to be standing, which doesn't fit "N open
+   stations" the same honest way.
+
+   [Phase 12b] Security Manager -> 'guard', added on request, using
+   that exact same "does it have a clean open-station count" test:
+   Guard Post/Watchtower reserve a single guardAssignedId each [Phase
+   8b] — the identical shape farm/build/haul already use.
+
+   [Phase 12c] Two reversals, both on request, and both real design
+   points worth recording rather than just diffing away silently:
+     - Kitchen Manager is gone, and so is 'cook' as a job entirely —
+       not just its minister. Cooking turned out to already be
+       caretaker-shaped in disguise: nearestMealBonus() only ever
+       checked whether a campfire *had* someone tagged as cook, never
+       whether that survivor was actually standing there — so forcing
+       the cook to occupy a full-time job slot was pure overhead with
+       no mechanical purpose behind it. Cook is now exactly what the
+       ranch caretaker already is: a tag (still `cookAssignedId`, still
+       set from the campfire's info panel), never touching c.role/c.job,
+       so whoever's tagged keeps doing their real work. This is *not*
+       a case of "delete the mechanic" the way drawwater below is —
+       resources.food only ever gets consumed through this bonus, so
+       deleting cook outright would've silently stranded every bit of
+       farmed food in storage forever. Converting it, not removing it,
+       is what keeps the farm -> food -> survivor pipeline intact.
+     - Water Carrier ('drawwater') is gone completely, mechanic and
+       all — and on inspection this wasn't a gap needing a manager,
+       it was dead weight. nearestWaterBonus() already recovers thirst
+       autonomously for anyone idle near a completed Well, same shape
+       as nearestMealBonus for food, and the same foraging fallback
+       that covers hunger already covered thirst too whenever no Well
+       was in range. The old drawwater job (a carrier physically
+       fetching and hand-delivering water to one thirsty survivor at a
+       time) duplicated a need already being met for free. No manager
+       was ever going to fix that — the fix was recognizing thirst was
+       already an autonomous need like eating or sleeping, never a job.
+
+   Doctor still has no manager, and still for the original reason: the
+   job itself does nothing to delegate. findJobTarget('doctor',...)
+   always returns null — Phase 8b made injury recovery passive on
+   purpose, "until Phase 13's medical-tier buildings exist to
+   accelerate it." A Medical Manager today could only ever generate
+   requests that sit forever un-fillable, which would be a UI lie, not
+   a feature. Worth revisiting once Phase 13 adds a real doctor job. */
+const MINISTER_ROLES = {
+  'head-farmer':    { id:'head-farmer',    name:'Farm Manager',      jobType:'farm',  skill:'farming'  },
+  'head-builder':   { id:'head-builder',   name:'Build Manager',     jobType:'build', skill:'building' },
+  'quartermaster':  { id:'quartermaster',  name:'Stores Manager',    jobType:'haul',  skill:'building' },
+  'head-rancher':   { id:'head-rancher',   name:'Ranch Manager',     jobType:null,    skill:'ranching' },
+  'security-chief': { id:'security-chief', name:'Security Manager',  jobType:'guard', skill:'combat'   } // [Phase 12b]
+};
+const MINISTER_ROLE_ORDER = ['head-farmer','head-builder','quartermaster','head-rancher','security-chief'];
+
+// No original numbers exist to design against here, same honest gap
+// Phase 9's tribute/mood numbers and Phase 11's autonomous-request tuning
+// both flagged rather than silently invented — these are this build's
+// own interpretation, worth auditing rather than presented as spec.
+const MINISTER_SATISFACTION_APPROVE = 8;
+const MINISTER_SATISFACTION_PARTIAL = 3;
+const MINISTER_SATISFACTION_REJECT = -10;
+const MINISTER_SATISFACTION_POSTPONE = -2;
+const MINISTER_REQUEST_CAP = 5; // never asks for more than this in one request, however large the real gap is
+
+let ministers = [];
+let ministerIdCounter = 0;
+let ministerRequests = [];
+let ministerRequestIdCounter = 0;
+
+function ministerFor(roleId){ return ministers.find(m => m.role === roleId) || null; }
+
+function appointMinister(roleId, survivorId){
+  // The founder resolves requests; they're never the one being delegated
+  // to. Guarded here too, not just in the picker's option list, so this
+  // holds even if something else calls this directly later.
+  const candidate = survivors.find(s => s.id === survivorId);
+  if(candidate && candidate.isFounder) return;
+  // A survivor can hold only one ministry at a time — pull them from
+  // wherever else they're posted first.
+  const elsewhere = ministers.find(m => m.survivorId === survivorId && m.role !== roleId);
+  if(elsewhere) dismissMinister(elsewhere.role);
+  let m = ministerFor(roleId);
+  if(m){
+    m.survivorId = survivorId;
+  } else {
+    m = { id: ministerIdCounter++, role: roleId, survivorId, satisfaction: 60, requestsApproved: 0, requestsRejected: 0 };
+    ministers.push(m);
+  }
+  flashAlert(`${survivorName(survivorId)} appointed ${MINISTER_ROLES[roleId].name}.`);
+  renderMinistersPanel();
+}
+
+function dismissMinister(roleId){
+  const idx = ministers.findIndex(m => m.role === roleId);
+  if(idx === -1) return;
+  const m = ministers[idx];
+  // An unresolved ask has nobody left to have asked it — withdrawn, not
+  // silently orphaned. Resolved history (approved/partial/rejected) stays
+  // in ministerRequests either way; nothing else references it once the
+  // department goes vacant.
+  ministerRequests = ministerRequests.filter(r => r.ministerId !== m.id || (r.status !== 'pending' && r.status !== 'postponed'));
+  ministers.splice(idx, 1);
+  renderMinistersPanel();
+}
+
+/* Open, currently-unclaimed stations for a department right now — the
+   same "is this target free" checks findJobTarget/computeDepartmentGap
+   already use elsewhere, just counted instead of nearest-picked (no
+   specific survivor to measure distance from at request-generation
+   time). */
+function computeDepartmentOpenStations(roleId){
+  if(roleId === 'head-farmer'){
+    return buildings.filter(b => b.type==='farmplot' && b.isComplete && b.farm && b.farm.assignedFarmerId==null).length;
+  }
+  if(roleId === 'head-builder'){
+    return buildings.filter(b => !b.isComplete && b.assignedBuilderId==null).length;
+  }
+  if(roleId === 'quartermaster'){
+    // same haul-is-pointless gate findJobTarget('haul',...) applies: no
+    // completed storage, no real request to make.
+    if(!buildings.some(b => b.type==='storagepile' && b.isComplete)) return 0;
+    return groundPiles.filter(p => p.reservedBy==null && p.amount>0).length;
+  }
+  if(roleId === 'head-rancher'){
+    return buildings.filter(b => {
+      if(!b.isComplete || !b.animalIds || b.animalIds.length===0) return false;
+      const first = animals.find(a => a.id === b.animalIds[0]);
+      return first && first.caretakerId == null;
+    }).length;
+  }
+  if(roleId === 'security-chief'){
+    return buildings.filter(b => (b.type==='guardpost' || b.type==='watchtower') && b.isComplete && b.guardAssignedId==null).length;
+  }
+  return 0;
+}
+
+function ministerRequestReason(roleId, count){
+  if(roleId==='head-farmer') return `${count} farm plot${count===1?'':'s'} standing empty`;
+  if(roleId==='head-builder') return `${count} blueprint${count===1?'':'s'} with nobody building`;
+  if(roleId==='quartermaster') return `${count} pile${count===1?'':'s'} of goods sitting unhauled`;
+  if(roleId==='head-rancher') return `${count} pen${count===1?'':'s'} with no one tending them`;
+  if(roleId==='security-chief') return `${count} guard post${count===1?'':'s'} standing unmanned`;
+  return 'more hands needed';
+}
+
+/* Daily generation — same cadence and shape as updateAttractionAndProposals:
+   called once from onNewDay, one check per minister, never fires for a
+   vacant department (nobody appointed to have asked), and never piles a
+   second ask on top of one still open or still being filled. */
+function updateMinisterRequests(){
+  for(const roleId of MINISTER_ROLE_ORDER){
+    const m = ministerFor(roleId);
+    if(!m) continue;
+    const hasUnresolved = ministerRequests.some(r => r.ministerId===m.id && (r.status==='pending' || r.status==='postponed'));
+    if(hasUnresolved) continue;
+    const hasUnfilledApproval = ministerRequests.some(r => r.ministerId===m.id && (r.status==='approved' || r.status==='partial') && r.recruitedWorkers < r.approvedWorkers);
+    if(hasUnfilledApproval) continue;
+    const gap = computeDepartmentOpenStations(roleId);
+    if(gap <= 0) continue;
+    const requestedWorkers = Math.min(gap, MINISTER_REQUEST_CAP);
+    ministerRequests.push({
+      id: ministerRequestIdCounter++,
+      ministerId: m.id,
+      role: roleId,
+      requestedWorkers,
+      approvedWorkers: 0,
+      recruitedWorkers: 0,
+      reason: ministerRequestReason(roleId, gap),
+      status: 'pending',
+      day: time.totalDays
+    });
+  }
+}
+
+/* The actual auto-recruit sweep, once a request is approved (full or
+   partial): pull in idle, role-less survivors — never anyone already
+   committed, whether the founder set that or another minister recruited
+   them first — best-skill-fit first, and place each one exactly like a
+   manual "Assign ___" click would. Runs daily alongside the generation
+   check above. */
+function updateMinisterRecruitment(){
+  for(const roleId of MINISTER_ROLE_ORDER){
+    const m = ministerFor(roleId);
+    if(!m) continue;
+    const req = ministerRequests.find(r => r.ministerId===m.id && (r.status==='approved' || r.status==='partial') && r.recruitedWorkers < r.approvedWorkers);
+    if(!req) continue;
+    const need = req.approvedWorkers - req.recruitedWorkers;
+    const cfg = MINISTER_ROLES[roleId];
+    let pool = survivors.filter(s => s.health>0 && s.stage!=='child' && !s.role && !s.job && !s.breaking);
+    if(roleId==='head-rancher') pool = pool.filter(s => !s.isFounder); // same exclusion eligibleCaretakers already applies
+    pool.sort((a,b) => (b.skills[cfg.skill]||0) - (a.skills[cfg.skill]||0));
+    let recruited = 0;
+    for(const s of pool){
+      if(recruited >= need) break;
+      if(recruitSurvivorForMinistry(roleId, s)) recruited++;
+    }
+    req.recruitedWorkers += recruited;
+  }
+}
+
+/* Places one survivor at one open station for a department. Deliberately
+   silent (no flashAlert/Chronicle spam) — this can fire several times a
+   day at scale, and a background administrative process shouldn't read
+   like a series of headline events; the Minister panel's own report line
+   is where the founder actually sees this happening, matching "the
+   player reads rather than infers" from the plan. */
+function recruitSurvivorForMinistry(roleId, s){
+  if(roleId === 'head-rancher'){
+    const pen = buildings.find(b => {
+      if(!b.isComplete || !b.animalIds || b.animalIds.length===0) return false;
+      const first = animals.find(a => a.id === b.animalIds[0]);
+      return first && first.caretakerId == null;
+    });
+    if(!pen) return false;
+    const penAnimals = pen.animalIds.map(id => animals.find(a=>a.id===id)).filter(Boolean);
+    for(const a of penAnimals){ a.caretakerId = s.id; a.familyId = s.familyId; }
+    s.mood = Math.min(100, s.mood + LIVESTOCK_REQUEST_APPROVE_MOOD);
+    s.needs.purpose = Math.min(100, s.needs.purpose + LIVESTOCK_REQUEST_APPROVE_PURPOSE);
+    return true;
+  }
+  const jobType = MINISTER_ROLES[roleId].jobType;
+  const target = findJobTarget(jobType, s);
+  if(!target) return false;
+  s.role = jobType;
+  startJob(s, jobType, target);
+  return true;
+}
+
+function resolveMinisterRequest(reqId, decision){
+  const req = ministerRequests.find(r => r.id === reqId);
+  if(!req) return;
+  const m = ministers.find(mm => mm.id === req.ministerId);
+  if(decision === 'approve'){
+    req.status = 'approved';
+    req.approvedWorkers = req.requestedWorkers;
+    if(m){ m.satisfaction = Math.min(100, m.satisfaction + MINISTER_SATISFACTION_APPROVE); m.requestsApproved++; }
+    bumpLoyalty(m ? m.survivorId : null, LOYALTY_MINISTER_APPROVE);
+    bumpReputation('provider', REPUTATION_MINISTER_APPROVE);
+  } else if(decision === 'partial'){
+    req.status = 'partial';
+    req.approvedWorkers = Math.max(1, Math.floor(req.requestedWorkers/2));
+    if(m){ m.satisfaction = Math.min(100, m.satisfaction + MINISTER_SATISFACTION_PARTIAL); m.requestsApproved++; }
+    bumpLoyalty(m ? m.survivorId : null, LOYALTY_MINISTER_PARTIAL);
+  } else if(decision === 'reject'){
+    req.status = 'rejected';
+    if(m){ m.satisfaction = Math.max(0, m.satisfaction + MINISTER_SATISFACTION_REJECT); m.requestsRejected++; }
+    bumpLoyalty(m ? m.survivorId : null, LOYALTY_MINISTER_REJECT);
+    bumpReputation('ruthless', REPUTATION_MINISTER_REJECT);
+  } else if(decision === 'postpone'){
+    req.status = 'postponed';
+    if(m){ m.satisfaction = Math.max(0, m.satisfaction + MINISTER_SATISFACTION_POSTPONE); }
+    bumpLoyalty(m ? m.survivorId : null, LOYALTY_MINISTER_POSTPONE);
+  }
+  renderMinistersPanel();
+}
+
+/* =========================================================
+   === AUTHORITY & REPUTATION (Phase 12b) ===
+   "Authority — earned, not granted": a derived six-rung status ladder,
+   the original's exact thresholds (90/75/60/40/20). The plan's own
+   wording is "computed from average family loyalty and support" — no
+   `support` field exists anywhere in this codebase and the plan doesn't
+   define one separately from loyalty, so rather than invent a second
+   untracked number to average in, this reads as one real thing:
+   `Survivor.loyaltyToFounder` (new this phase, 0-100, starts neutral at
+   50 — nobody's earned trust or lost it yet at founding). "Average
+   family loyalty" is taken literally as a two-level average — each
+   House's own average across its living members, then the average of
+   those per-House averages — rather than one flat average across every
+   survivor, so a small, deeply loyal House counts as much as a large
+   one instead of getting drowned out by population size. Flagged as
+   this build's own interpretation of an underspecified line, not
+   presented as a verified port.
+
+   Loyalty itself drifts two ways, mirroring Phase 4's housingSatisfaction
+   idiom (a real value smoothed toward a target, not just discrete
+   pings): an ambient daily pull toward the survivor's own
+   mood/belonging/purpose (ordinary life going well nudges trust up
+   without the founder personally doing anything that day — "earned
+   over years", per the plan's own framing, comes from the slow 0.04/day
+   smoothing rate, not a fast swing), plus real discrete deltas at the
+   founder's actual decisions that land on a specific survivor: a
+   livestock request approved/refused (Phase 9), a minister's request
+   approved/partial/refused/postponed (Phase 12a, landing on the
+   minister personally), a marriage proposal approved/refused (Phase 11,
+   landing on both survivors). No original numbers exist for any of
+   this — flagged for audit like Phase 9's and 12a's own tuning was,
+   not presented as verified.
+
+   Reputation is kept deliberately separate from loyalty, on a real
+   scope line rather than mixed together: loyalty is what your own
+   people already here think of you; reputation is the founder's
+   outward-facing character, built from choices about people and things
+   *outside* the existing population. Five axes, the original's exact
+   set, each 0-100, starting at 20 (low, not neutral — a title
+   shouldn't be reachable in the first few in-game days). A title shows
+   once an axis clears the original's exact 55 threshold *and* is the
+   highest-scoring axis:
+     - Compassionate / Ruthless — an arrival accepted or turned away
+       (Phase 10); these are two separate axes, not one axis with two
+       poles, matching the original's own five-ID set.
+     - Provider — a livestock request approved (Phase 9) or a
+       minister's worker request approved (Phase 12a): concrete acts of
+       resourcing your own people.
+     - Builder — "whether the skyline grows," read literally: a small
+       bump on every real building completion (the active-construction
+       codepath specifically, not a force-completed test fixture).
+     - Honest — deliberately left with NO producer wired to it this
+       phase, same "shape before content" pattern already established
+       for the Chronicle's still-inert categories: "whether promises
+       are kept" needs an actual promise to keep or break, and that's
+       explicitly Phase 12d's "pending promises" mechanic, not built
+       yet. Wiring a stand-in now would mean re-deciding what "a kept
+       promise" even is twice. Sits real and inert, exactly like
+       `JOB_TYPES.doctor` before Phase 13. */
+const REPUTATION_AXES = ['compassionate','ruthless','builder','provider','honest'];
+const REPUTATION_TITLE = {
+  compassionate:'The Compassionate', ruthless:'The Ruthless', builder:'The Builder',
+  provider:'The Provider', honest:'The Honest'
+};
+const REPUTATION_TITLE_THRESHOLD = 55; // the original's exact number
+let reputation = { compassionate:20, ruthless:20, builder:20, provider:20, honest:20 };
+
+const AUTHORITY_RUNGS = [
+  { min:90, label:'Legendary Founder' },
+  { min:75, label:'Highly Respected' },
+  { min:60, label:'Trusted Leader' },
+  { min:40, label:'Accepted Leader' },
+  { min:20, label:'Weak Leader' },
+  { min:0,  label:'Discredited Leader' }
+]; // the original's exact six rungs/thresholds
+
+function bumpReputation(axis, delta){
+  if(!reputation.hasOwnProperty(axis)) return;
+  reputation[axis] = Math.max(0, Math.min(100, reputation[axis] + delta));
+}
+function bumpLoyalty(survivorId, delta){
+  if(survivorId == null) return;
+  const s = survivors.find(x => x.id === survivorId);
+  if(!s || s.isFounder) return; // the founder has no loyalty-to-self to track
+  s.loyaltyToFounder = Math.max(0, Math.min(100, (s.loyaltyToFounder!=null?s.loyaltyToFounder:50) + delta));
+}
+// No original numbers exist for any of these deltas — this build's own
+// interpretation, flagged for audit rather than presented as spec, same
+// as Phase 9's tribute numbers and Phase 12a's satisfaction deltas.
+const LOYALTY_LIVESTOCK_APPROVE = 6, LOYALTY_LIVESTOCK_REJECT = -6;
+const LOYALTY_MARRIAGE_APPROVE = 5, LOYALTY_MARRIAGE_REJECT = -5;
+const LOYALTY_MINISTER_APPROVE = 5, LOYALTY_MINISTER_PARTIAL = 2, LOYALTY_MINISTER_REJECT = -5, LOYALTY_MINISTER_POSTPONE = -1;
+const LOYALTY_AMBIENT_SMOOTHING = 0.04; // per day — slow on purpose, "earned over years"
+const REPUTATION_ARRIVAL_ACCEPT = 4, REPUTATION_ARRIVAL_REJECT = 4;
+const REPUTATION_LIVESTOCK_APPROVE = 2;
+const REPUTATION_MINISTER_APPROVE = 1, REPUTATION_MINISTER_REJECT = 1;
+const REPUTATION_BUILDING_COMPLETE = 1;
+
+/* Daily ambient drift — called once from onNewDay, same cadence as
+   every other daily system in this file. Pulls each living survivor's
+   loyalty slowly toward how their ordinary life is actually going. */
+function updateLoyalty(){
+  for(const c of survivors){
+    if(c.health <= 0 || c.isFounder) continue;
+    const target = (c.mood + c.needs.belonging + c.needs.purpose) / 3;
+    c.loyaltyToFounder = (c.loyaltyToFounder!=null?c.loyaltyToFounder:50) + (target - (c.loyaltyToFounder!=null?c.loyaltyToFounder:50)) * LOYALTY_AMBIENT_SMOOTHING;
+    c.loyaltyToFounder = Math.max(0, Math.min(100, c.loyaltyToFounder));
+  }
+}
+
+/* "Average family loyalty" taken literally — see the section comment
+   above for why this is a two-level average rather than one flat pass
+   over every survivor. */
+function authorityValue(){
+  const withMembers = families.filter(f => f.memberIds.some(id => {
+    const s = survivors.find(x=>x.id===id); return s && s.health>0 && !s.isFounder;
+  }));
+  if(!withMembers.length) return 50;
+  const perFamily = withMembers.map(f => {
+    const living = f.memberIds.map(id=>survivors.find(x=>x.id===id)).filter(s=>s && s.health>0 && !s.isFounder);
+    if(!living.length) return 50;
+    return living.reduce((sum,s)=>sum+(s.loyaltyToFounder!=null?s.loyaltyToFounder:50),0) / living.length;
+  });
+  return perFamily.reduce((a,b)=>a+b,0) / perFamily.length;
+}
+function authorityRank(v){
+  for(const rung of AUTHORITY_RUNGS) if(v >= rung.min) return rung.label;
+  return AUTHORITY_RUNGS[AUTHORITY_RUNGS.length-1].label;
+}
+/* Highest-scoring axis, only if it clears the real 55 threshold —
+   below that the founder has no earned title yet, matching the plan's
+   own "they're just 'the founder'" framing exactly. */
+function reputationTitle(){
+  let best = null, bestVal = -1;
+  for(const axis of REPUTATION_AXES){
+    if(reputation[axis] > bestVal){ bestVal = reputation[axis]; best = axis; }
+  }
+  if(bestVal < REPUTATION_TITLE_THRESHOLD) return null;
+  return REPUTATION_TITLE[best];
 }
 
 /* SCHEMA v6: resources widened to the full ResourceKind set the original
@@ -2596,7 +3077,7 @@ function cancelBuilding(b){
 
 /* nearest walkable tile anything can stand on to work a given tile —
    the tile itself if walkable, else the nearest walkable neighbor. Used by
-   every stationary job (build/farm/cook/chop/mine/haul/drawwater) to find
+   every stationary job (build/farm/chop/mine/haul) to find
    where a survivor should stand. [Phase 5: generalized from the Phase-4
    build-only findBuildApproachTile — same logic, now reusable.] */
 function findApproachTile(tx, ty){
@@ -2663,6 +3144,7 @@ function updateSurvivorBuilding(c, dt){
   if(b.workDone >= b.workRequired){
     b.isComplete = true;
     logChronicle('construction', `${BUILDING_TYPES[b.type].name} completed`); // [Phase 10]
+    bumpReputation('builder', REPUTATION_BUILDING_COMPLETE); // [Phase 12b] "whether the skyline grows"
     // [Phase 9, redesigned] a completed pen either fulfills the specific
     // survivor's request that authorized it (scenario 2 — auto-attribute,
     // no modal needed, they already asked), or was built freely by the
@@ -2754,17 +3236,23 @@ function nearCampfireBelonging(c){
 // SCHEMA v8: 'guard' added [Phase 8b] — the combat skill has sat reserved
 // and unused in SKILL_LIST since Phase 2, same idiom as ranching waiting
 // for Phase 9; this is what it was for.
-const JOB_TYPES = ['build','haul','chop','mine','farm','cook','drawwater','doctor','guard'];
+// [Phase 12c] 'cook' and 'drawwater' both left this list on request —
+// see the MINISTERS & DELEGATION comment block below for the full
+// reasoning on each. 'cook' still has a JOB_LABELS entry (the assign
+// picker's title still needs a display string for it) even though it's
+// no longer a real job; the picker's underlying assignSurvivorToJob now
+// branches for it into a tag, not a role commitment.
+const JOB_TYPES = ['build','haul','chop','mine','farm','doctor','guard'];
 const JOB_LABELS = {
   build:'Build', haul:'Haul', chop:'Chop Wood', mine:'Mine Stone',
-  farm:'Farm', cook:'Cook', drawwater:'Draw Water', doctor:'Doctor', guard:'Guard'
+  farm:'Farm', cook:'Cook', doctor:'Doctor', guard:'Guard'
 };
 // Which skill scales each job's work rate. No dedicated woodcutting/mining
 // skill exists in the Phase-2 SKILL_LIST, so general labor (building) covers
-// chop/mine/haul/drawwater alongside actual construction — a scope choice,
+// chop/mine/haul alongside actual construction — a scope choice,
 // not an oversight; a gathering-specific skill can split off later if it
 // earns its keep. [Phase 5]
-const JOB_SKILL = { build:'building', haul:'building', chop:'building', mine:'building', farm:'farming', cook:'farming', drawwater:'building', doctor:'medicine', guard:'combat' };
+const JOB_SKILL = { build:'building', haul:'building', chop:'building', mine:'building', farm:'farming', doctor:'medicine', guard:'combat' };
 const HAUL_CAPACITY_BASE = 10;
 
 /* Shared, human-readable status for a survivor — "what are they doing
@@ -2775,11 +3263,6 @@ function survivorStatusLabel(c){
   if(c.job){
     const label = JOB_LABELS[c.job.type];
     if(c.job.type === 'haul') return c.job.phase === 'carrying' ? `hauling ${c.carrying ? c.carrying.resource : ''}` : 'hauling — gathering';
-    if(c.job.type === 'drawwater'){
-      if(c.job.phase === 'delivering') return 'drawing water — delivering';
-      if(c.job.phase === 'seeking') return 'drawing water — filled up';
-      return 'drawing water — at the well';
-    }
     if(c.job.type === 'guard') return 'standing guard'; // [Phase 8b]
     return label.toLowerCase();
   }
@@ -2788,8 +3271,6 @@ function survivorStatusLabel(c){
   if(c.state === 'building') return 'building';
   return 'idle, unassigned';
 }
-const WELL_FILL_SECONDS = 2;
-const WELL_CARRY_AMOUNT = 40;
 
 function tileEq(c, tile){
   return tile && Math.floor(c.wx/CONFIG.TILE)===tile.x && Math.floor(c.wy/CONFIG.TILE)===tile.y;
@@ -2824,9 +3305,6 @@ function releaseJob(c){
     } else if(job.type === 'farm'){
       const b = buildings.find(bb => bb.id === job.targetId);
       if(b && b.farm && b.farm.assignedFarmerId === c.id) b.farm.assignedFarmerId = null;
-    } else if(job.type === 'cook'){
-      const b = buildings.find(bb => bb.id === job.targetId);
-      if(b && b.cookAssignedId === c.id) b.cookAssignedId = null;
     } else if(job.type === 'haul'){
       const p = groundPiles.find(pp => pp.id === job.targetId);
       if(p && p.reservedBy === c.id) p.reservedBy = null;
@@ -2837,13 +3315,6 @@ function releaseJob(c){
     } else if(job.type === 'guard'){ // [Phase 8b]
       const b = buildings.find(bb => bb.id === job.targetId);
       if(b && b.guardAssignedId === c.id) b.guardAssignedId = null;
-    }
-    // drawwater holds no exclusive target reservation (any number of
-    // carriers can draw from the same Well) — only its in-flight delivery
-    // claim on a *recipient* survivor, cleared inline wherever it's set.
-    if(job.deliverTargetId != null){
-      const t = survivors.find(s => s.id === job.deliverTargetId);
-      if(t && t.waterDeliveryClaimedBy === c.id) t.waterDeliveryClaimedBy = null;
     }
   }
   c.job = null;
@@ -2887,15 +3358,6 @@ function findJobTarget(type, c){
     }
     return best;
   }
-  if(type === 'cook'){
-    let best = null, bestD = Infinity;
-    for(const b of buildings){
-      if(b.type !== 'campfire' || !b.isComplete || b.cookAssignedId != null) continue;
-      const d = Math.hypot(b.tx-cx, b.ty-cy);
-      if(d < bestD){ bestD = d; best = b; }
-    }
-    return best;
-  }
   if(type === 'haul'){
     // needs somewhere to deliver to, or hauling is pointless
     if(!nearestCompletedBuildingOfType('storagepile', c)) return null;
@@ -2918,9 +3380,6 @@ function findJobTarget(type, c){
       if(d < bestD){ bestD = d; best = b; }
     }
     return best;
-  }
-  if(type === 'drawwater'){
-    return nearestCompletedBuildingOfType('well', c);
   }
   if(type === 'doctor'){
     // Still nothing for this to find — 8b's own injury system deliberately
@@ -2959,14 +3418,9 @@ function startJob(c, type, target){
   } else if(type === 'farm'){
     target.farm.assignedFarmerId = c.id;
     c.job = { type, targetKind:'building', targetId: target.id };
-  } else if(type === 'cook'){
-    target.cookAssignedId = c.id;
-    c.job = { type, targetKind:'building', targetId: target.id };
   } else if(type === 'haul'){
     target.reservedBy = c.id;
     c.job = { type, targetKind:'pile', targetId: target.id, phase:'topile' };
-  } else if(type === 'drawwater'){
-    c.job = { type, targetKind:'well', targetId: target.id, phase:'tofill', fillTimer:0 };
   } else if(type === 'guard'){
     // [Phase 8b] same single-slot shape as cook/farm.
     target.guardAssignedId = c.id;
@@ -2977,9 +3431,10 @@ function startJob(c, type, target){
 
 /* Whichever survivor currently holds `target` for job `type`, or null.
    Used by assignSurvivorToJob() to know who to bump when the player
-   hands the same target to somebody else. drawwater has no single-target
-   exclusivity (any number of carriers can draw from one Well), so it
-   always returns null there — nobody to bump. [Phase 5 rework] */
+   hands the same target to somebody else. 'cook' keeps its branch here
+   even though it's no longer a real job [Phase 12c] — the assign
+   picker still needs to know who's currently tagged so it can show
+   "currently on this" and swap the tag cleanly. */
 function jobTargetHolderId(type, target){
   if(type === 'chop' || type === 'mine') return target.reservedBy;
   if(type === 'farm') return target.farm ? target.farm.assignedFarmerId : null;
@@ -2996,8 +3451,18 @@ function jobTargetHolderId(type, target){
    the same kind next cycle via tryResumeRole), pulls `c` off whatever
    they were doing, then commits them to `type`/`target` and remembers it
    as their ongoing role. [Phase 5 rework] */
+/* [Phase 12c] Cook is a tag on the campfire, not a job — see the
+   campfire info-panel comment above for why. Branches out before any
+   of the role/job machinery below runs, so designating a cook never
+   touches c.role/c.job and never interrupts whatever they're actually
+   doing. Bumping a previous cook just clears their tag directly (no
+   releaseJob call — they were never "on a job" to release). */
 function assignSurvivorToJob(c, type, target){
   if(!c || c.breaking) return;
+  if(type === 'cook'){
+    target.cookAssignedId = c.id;
+    return;
+  }
   const holderId = jobTargetHolderId(type, target);
   if(holderId != null && holderId !== c.id){
     const holder = survivors.find(s => s.id === holderId);
@@ -3006,6 +3471,13 @@ function assignSurvivorToJob(c, type, target){
   if(c.job) releaseJob(c);
   c.role = type;
   startJob(c, type, target);
+}
+
+/* Clears a campfire's cook tag without touching the survivor's actual
+   job — the caretaker-style counterpart to recallSurvivor(), which
+   would wrongly pull them off their real work. [Phase 12c] */
+function undesignateCook(b){
+  b.cookAssignedId = null;
 }
 
 /* The player's explicit "stop working, go idle" action — the ONE place a
@@ -3138,22 +3610,6 @@ function updateSurvivorJob(c, dt){
     return; // a farmer stays on their plot indefinitely — never releases on its own
   }
 
-  if(job.type === 'cook'){
-    const b = buildings.find(bb => bb.id === job.targetId);
-    if(!b || !buildings.includes(b) || b.cookAssignedId !== c.id){ releaseJob(c); return; }
-    const approach = findApproachTile(b.tx, b.ty);
-    if(!approach){ releaseJob(c); return; }
-    if(!tileEq(c, approach)){
-      if(c.path.length === 0) pathSurvivorTo(c, approach.x, approach.y);
-      c.state = 'walking';
-      return;
-    }
-    c.state = 'working'; // actual meal effect lives in nearestMealBonus(), rolled into needs
-    c.path = [];
-    c.needs.purpose = Math.min(100, c.needs.purpose + 0.3*dt);
-    return; // a cook stays on duty indefinitely, same as a farmer
-  }
-
   if(job.type === 'haul'){
     if(job.phase === 'topile'){
       const pile = groundPiles.find(p => p.id === job.targetId);
@@ -3215,59 +3671,6 @@ function updateSurvivorJob(c, dt){
           flashAlert(`Storage is full — ${Math.round(leftover)} ${c.carrying.resource} left waiting at the pile.`);
         }
       }
-      c.needs.purpose = Math.min(100, c.needs.purpose + 2);
-      releaseJob(c);
-      return;
-    }
-  }
-
-  if(job.type === 'drawwater'){
-    if(job.phase === 'tofill'){
-      const well = buildings.find(b => b.id === job.targetId);
-      if(!well || !buildings.includes(well) || !well.isComplete){ releaseJob(c); return; }
-      const approach = findApproachTile(well.tx, well.ty);
-      if(!approach){ releaseJob(c); return; }
-      if(!tileEq(c, approach)){
-        if(c.path.length === 0) pathSurvivorTo(c, approach.x, approach.y);
-        c.state = 'walking';
-        return;
-      }
-      c.state = 'working';
-      c.path = [];
-      job.fillTimer += dt;
-      if(job.fillTimer >= WELL_FILL_SECONDS){
-        c.carrying = { resource:'water', amount: WELL_CARRY_AMOUNT };
-        job.phase = 'seeking';
-      }
-      return;
-    }
-    if(job.phase === 'seeking'){
-      const target = survivors.find(s => s !== c && s.job && s.job.type !== 'drawwater'
-        && s.needs.water < 55 && s.waterDeliveryClaimedBy == null);
-      if(!target){
-        // Nobody needs a delivery right now — stay on duty and keep
-        // checking each tick rather than dropping the job. Under manual
-        // assignment there's no background scan to re-pick this for them;
-        // "assigned as water carrier" should mean they wait it out, not
-        // quietly go idle the moment nobody's thirsty yet. [Phase 5 rework]
-        return;
-      }
-      target.waterDeliveryClaimedBy = c.id;
-      job.deliverTargetId = target.id;
-      job.phase = 'delivering';
-      return;
-    }
-    if(job.phase === 'delivering'){
-      const target = survivors.find(s => s.id === job.deliverTargetId);
-      if(!target || target.waterDeliveryClaimedBy !== c.id){ releaseJob(c); return; }
-      const dist = Math.hypot(target.wx-c.wx, target.wy-c.wy);
-      if(dist > CONFIG.TILE*1.4){
-        if(c.path.length === 0) pathSurvivorTo(c, Math.floor(target.wx/CONFIG.TILE), Math.floor(target.wy/CONFIG.TILE));
-        c.state = 'walking';
-        return;
-      }
-      target.needs.water = Math.min(100, target.needs.water + (c.carrying ? c.carrying.amount : WELL_CARRY_AMOUNT));
-      target.waterDeliveryClaimedBy = null;
       c.needs.purpose = Math.min(100, c.needs.purpose + 2);
       releaseJob(c);
       return;
@@ -3563,6 +3966,102 @@ function renderLivestockMenu(){
     });
   });
 }
+
+/* =========================================================
+   === MINISTERS PANEL (Phase 12a) ===
+   One card per department, in MINISTER_ROLE_ORDER. A vacant department
+   shows an appoint picker (survivor select + button) — same "pick from
+   a dropdown" idiom the Livestock panel's caretaker reassign already
+   uses, rather than a whole new modal for something this small. An
+   appointed department shows who holds it, their satisfaction, a short
+   report line, and (if there's a pending/postponed request) the same
+   Approve/Approve Partial/Reject/Postpone row the Livestock panel's
+   requests use, plus a Dismiss button.
+
+   The "report" line is computed live from current satisfaction rather
+   than a persisted, timestamped MinisterReport log — the plan calls for
+   the player to "read rather than infer" a minister's state, which this
+   satisfies without inventing a second history system alongside the
+   Chronicle's already-fixed 12-category one. Worth flagging as a
+   simplification, not a literal MinisterReport object. ========== */
+function ministerReportLine(m){
+  const name = survivorName(m.survivorId);
+  if(m.satisfaction >= 70) return `${name} reports things are running smoothly.`;
+  if(m.satisfaction >= 30) return `${name} has nothing urgent to report.`;
+  return `${name} reports frustration — requests going unanswered.`;
+}
+function eligibleMinisterCandidates(roleId){
+  return survivors.filter(s => s.health>0 && s.stage!=='child' && !s.isFounder &&
+    !ministers.some(mm => mm.survivorId===s.id && mm.role!==roleId));
+}
+function renderMinistersPanel(){
+  const menu = document.getElementById('ministersmenu');
+  menu.innerHTML = MINISTER_ROLE_ORDER.map(roleId => {
+    const def = MINISTER_ROLES[roleId];
+    const m = ministerFor(roleId);
+    if(!m){
+      const candidates = eligibleMinisterCandidates(roleId);
+      const options = candidates.length
+        ? candidates.map(s => `<option value="${s.id}">${s.name} ${s.surname}</option>`).join('')
+        : `<option value="">no one eligible</option>`;
+      return `
+        <div class="minister-card">
+          <div class="minister-title">${def.name} — unappointed</div>
+          <div class="minister-meta">nobody delegates this department yet — assignment stays fully manual</div>
+          <div class="minister-actions">
+            <select class="minister-appoint-select" data-role="${roleId}" ${candidates.length?'':'disabled'}>${options}</select>
+            <button class="mini-btn minister-appoint-btn" data-role="${roleId}" ${candidates.length?'':'disabled'}>Appoint</button>
+          </div>
+        </div>
+      `;
+    }
+    const req = ministerRequests.find(r => r.ministerId===m.id && (r.status==='pending' || r.status==='postponed'));
+    const requestRow = req ? `
+      <div class="minister-meta">requesting ${req.requestedWorkers} worker${req.requestedWorkers===1?'':'s'} — ${req.reason}${req.status==='postponed'?' · postponed':''}</div>
+      <div class="minister-actions">
+        <button class="mini-btn minister-decide" data-id="${req.id}" data-decision="approve">Approve</button>
+        ${req.requestedWorkers>1 ? `<button class="mini-btn secondary minister-decide" data-id="${req.id}" data-decision="partial">Approve Partial</button>` : ''}
+        <button class="mini-btn secondary minister-decide" data-id="${req.id}" data-decision="reject">Reject</button>
+        <button class="mini-btn secondary minister-decide" data-id="${req.id}" data-decision="postpone">Postpone</button>
+      </div>
+    ` : `<div class="minister-meta">no pending request</div>`;
+    return `
+      <div class="minister-card">
+        <div class="minister-title">${def.name} — ${survivorName(m.survivorId)}</div>
+        <div class="minister-meta">satisfaction ${Math.round(m.satisfaction)}/100 · ${m.requestsApproved} approved · ${m.requestsRejected} rejected</div>
+        <div class="minister-report">${ministerReportLine(m)}</div>
+        ${requestRow}
+        <div class="minister-actions" style="margin-top:4px;">
+          <button class="mini-btn secondary minister-dismiss" data-role="${roleId}">Dismiss</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  menu.querySelectorAll('.minister-appoint-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const roleId = btn.dataset.role;
+      const select = menu.querySelector(`.minister-appoint-select[data-role="${roleId}"]`);
+      if(!select || !select.value) return;
+      appointMinister(roleId, parseInt(select.value, 10));
+    });
+  });
+  menu.querySelectorAll('.minister-dismiss').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dismissMinister(btn.dataset.role);
+    });
+  });
+  menu.querySelectorAll('.minister-decide').forEach(btn => {
+    btn.addEventListener('click', () => {
+      resolveMinisterRequest(parseInt(btn.dataset.id, 10), btn.dataset.decision);
+    });
+  });
+}
+document.getElementById('ministersToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('ministersmenu');
+  menu.hidden = !menu.hidden;
+  if(!menu.hidden) renderMinistersPanel();
+});
 
 /* =========================================================
    === GIFTING MODAL (Phase 9, redesigned) ===
@@ -4406,18 +4905,22 @@ function createSurvivor(tx, ty, opts, colorIdx){
     // "Assign ___" button on a specific target (a tree, a farm plot, a
     // blueprint...). `job` is the concrete in-progress assignment (null
     // when between targets): { type, targetKind, targetId, phase? }.
-    // `carrying` holds an in-transit resource for haul/drawwater.
-    // `waterDeliveryClaimedBy` marks this survivor as already promised a
-    // water delivery, so two drawwater carriers don't converge on the
-    // same thirsty worker. (Replaces the old SCHEMA v5 `priorities` grid
-    // and its auto-assignment scan — see GAME_PLAN.md's Phase 5 rework
-    // note for why: the player wants to hand-pick who does what, not rank
-    // job types on a 0-3 dial and let the game decide.)
+    // `carrying` holds an in-transit resource for haul. [Phase 12c:
+    // drawwater's delivery run — and the waterDeliveryClaimedBy field
+    // that went with it — is gone; thirst is fully autonomous now via
+    // nearestWaterBonus()+foraging, same shape as food.] (Replaces the
+    // old SCHEMA v5 `priorities` grid and its auto-assignment scan — see
+    // GAME_PLAN.md's Phase 5 rework note for why: the player wants to
+    // hand-pick who does what, not rank job types on a 0-3 dial and let
+    // the game decide.)
     role: null,
     job: null,
     carrying: null,
-    waterDeliveryClaimedBy: null,
     jobSearchCooldown: survivorRng()*0.5,
+    // SCHEMA v12: Authority & Reputation reads this — see the
+    // AUTHORITY & REPUTATION section for what drives it. Starts neutral;
+    // nobody's earned trust or lost it yet at creation. [Phase 12b]
+    loyaltyToFounder: 50,
     skills,
     traits,
     // SCHEMA v3: Survivor.needs widened from the generic hunger/rest/comfort/
@@ -4763,7 +5266,7 @@ foundBtn.addEventListener('click', () => {
   // [UI cleanup] the 5 gameplay toggle groups, plus settings/zoom,
   // are hidden until there's an actual game to show — this is founding
   // completing for real.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -4880,7 +5383,7 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
   document.getElementById('settingsmenu').setAttribute('hidden','');
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
@@ -5583,24 +6086,27 @@ function renderBuildingPanel(b){
         <div class="crop-picker">${swatches}</div>
       `;
     } else if(b.type === 'campfire'){
+      // [Phase 12c] Cook is a caretaker-style tag now, not a job — the
+      // person tagged here keeps doing their real work; the meal bonus
+      // (nearestMealBonus) only checks that this building has someone
+      // tagged, never where that person actually is. So this still uses
+      // the assign picker (to reuse its "who's free / who's this" list),
+      // but assignSurvivorToJob() branches for 'cook' into a plain tag
+      // set, and the undo path is its own dedicated button below rather
+      // than the generic Recall — Recall runs releaseJob(), which would
+      // wrongly rip the cook out of whatever their actual job is.
       const cook = b.cookAssignedId != null ? survivors.find(s=>s.id===b.cookAssignedId) : null;
-      jobRow = `<div class="row">cook: ${cook ? cook.name : 'unassigned'}</div>`;
+      jobRow = `<div class="row">cook: ${cook ? `${cook.name} (also ${survivorStatusLabel(cook)})` : 'unassigned'}</div>`;
       assignHtml = `
-        <button class="mini-btn secondary assign-open-btn" data-jobtype="cook" data-kind="building" data-target="${b.id}">${cook ? 'Reassign Cook' : 'Assign Cook'}</button>
-        ${cook ? `<button class="mini-btn recall-open-btn" data-survivor="${cook.id}">Recall Cook</button>` : ''}
+        <button class="mini-btn secondary assign-open-btn" data-jobtype="cook" data-kind="building" data-target="${b.id}">${cook ? 'Reassign Cook' : 'Designate Cook'}</button>
+        ${cook ? `<button class="mini-btn undesignate-cook-btn" data-building="${b.id}">Remove Cook</button>` : ''}
       `;
     } else if(b.type === 'well'){
-      // drawwater has no single-target exclusivity — any number of
-      // carriers can be assigned here, so list them all instead of one
-      // "assigned to" line. [Phase 5 rework]
-      const carriers = survivors.filter(s => s.job && s.job.type === 'drawwater' && s.job.targetId === b.id);
-      jobRow = carriers.length
-        ? `<div class="row">carriers: ${carriers.map(s=>s.name).join(', ')}</div>`
-        : `<div class="row">carriers: none assigned</div>`;
-      assignHtml = `
-        <button class="mini-btn secondary assign-open-btn" data-jobtype="drawwater" data-kind="well" data-target="${b.id}">Assign Water Carrier</button>
-        ${carriers.map(s=>`<button class="mini-btn recall-open-btn" data-survivor="${s.id}">Recall ${s.name}</button>`).join('')}
-      `;
+      // [Phase 12c] drawwater is gone — a Well just passively restores
+      // thirst for anyone idle nearby (nearestWaterBonus), same as a
+      // campfire's warmth or a bed's shelter recovery. Nothing to assign.
+      jobRow = `<div class="row">passively restores thirst for anyone nearby — nothing to assign</div>`;
+      assignHtml = '';
     } else if(def.storageCapacity){
       // SCHEMA v6: any storage-capable building shows the SHARED total
       // (all Storage Piles pool into one capacity), not a per-building
@@ -5700,7 +6206,12 @@ function wireAssignButtons(){
       else if(kind === 'node') target = resourceNodes.find(x=>x.id===id);
       else if(kind === 'pile') target = groundPiles.find(x=>x.id===id);
       if(!target) return;
-      openAssignPicker(type, target);
+      // [Phase 12c] cook is a tag, not a job — the picker's default sub
+      // text ("pulls them off whatever they're currently doing") is
+      // simply false for it, so override it here rather than let the
+      // UI promise something assignSurvivorToJob no longer does.
+      const opts = type === 'cook' ? { sub: "choose who's designated cook — they'll keep doing their actual job too" } : undefined;
+      openAssignPicker(type, target, opts);
     });
   });
   infoPanel.querySelectorAll('.recall-open-btn').forEach(btn=>{
@@ -5710,6 +6221,17 @@ function wireAssignButtons(){
       recallSurvivor(c);
       updateInfoPanel();
       renderSurvivorBar();
+    });
+  });
+  // [Phase 12c] dedicated undo for the cook tag — deliberately not the
+  // generic recall-open-btn above, which calls releaseJob() and would
+  // wrongly strip the cook's actual job along with the tag.
+  infoPanel.querySelectorAll('.undesignate-cook-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const b = buildings.find(x=>x.id===parseInt(btn.dataset.building,10));
+      if(!b) return;
+      undesignateCook(b);
+      updateInfoPanel();
     });
   });
 }
@@ -5793,6 +6315,27 @@ function renderSurvivorPanel(c){
     dynastyHtml += `<div class="row" style="font-style:italic; opacity:0.85;">expecting — about ${daysLeft} day${daysLeft===1?'':'s'} left</div>`;
   }
 
+  // [Phase 12b] Authority & Reputation — founder-only, since it's a
+  // reading of how the *founder* is doing, not any individual survivor.
+  let authorityHtml = '';
+  if(c.isFounder){
+    const authVal = authorityValue();
+    const rank = authorityRank(authVal);
+    const title = reputationTitle();
+    const repBarsHtml = REPUTATION_AXES.map(axis => `
+      <div class="bar-row">
+        <span class="bar-label">${axis}</span>
+        <span class="bar-track"><span class="bar-fill skill" style="width:${reputation[axis]}%"></span></span>
+      </div>
+    `).join('');
+    authorityHtml = `
+      <div class="section-label">Authority</div>
+      <div class="row">${rank} (${Math.round(authVal)})</div>
+      <div class="section-label">Reputation${title ? ` — ${title}` : ''}</div>
+      ${repBarsHtml}
+    `;
+  }
+
   infoPanel.innerHTML = `
     <div class="title">${c.name} ${c.surname}${c.isFounder ? ' 👑' : ''}</div>
     <div class="row">${bg ? bg.name : ''} · ${stageLabel}, age ${Math.floor(c.age)} · ${c.gender==='f'?'woman':'man'}</div>
@@ -5805,6 +6348,7 @@ function renderSurvivorPanel(c){
     <div class="section-label">Needs</div>
     ${needsHtml}
     ${housingHtml}
+    ${authorityHtml}
     ${relationshipHtml}
     ${dynastyHtml}
   `;
@@ -6316,7 +6860,7 @@ const ARRIVAL_KINDS = {
 const ARRIVAL_KIND_IDS = Object.keys(ARRIVAL_KINDS);
 
 let arrivalsAccepted = 0;
-let arrivalsRejected = 0; // both exist so Phase 12's reputation system has something real to read once it lands — inert until then, per the plan's own note that both choices "feed" it
+let arrivalsRejected = 0; // [Phase 12b] both now feed the Compassionate/Ruthless reputation axes directly, at the point each arrival is resolved — see resolveArrival()
 let pendingArrival = null;
 
 function runArrivalEvent(){
@@ -6394,11 +6938,13 @@ function resolveArrival(accept){
     }
 
     arrivalsAccepted++;
+    bumpReputation('compassionate', REPUTATION_ARRIVAL_ACCEPT); // [Phase 12b]
     flashAlert(`${newFamily.name} joins the ranch — ${spawned.length} new settler${spawned.length===1?'':'s'}.`);
     logChronicle('arrival', `${newFamily.name} joins the ranch`, `${spawned.length} settler${spawned.length===1?'':'s'}${a.cropKnowledge?`, brings knowledge of ${CROPS[a.cropKnowledge].name}`:''}`);
     renderSurvivorBar();
   } else {
     arrivalsRejected++;
+    bumpReputation('ruthless', REPUTATION_ARRIVAL_REJECT); // [Phase 12b]
     flashAlert(`${kind.title} — turned away.`);
     logChronicle('event', `${kind.title} — turned away`);
   }
@@ -6686,9 +7232,13 @@ function resolveMarriageProposal(proposal, decision){
     const rel = getOrCreateRelationship(proposal.survivorAId, proposal.survivorBId);
     rel.engagedTick = proposal.engagedTick;
     updateRelationshipTag(rel);
+    bumpLoyalty(proposal.survivorAId, LOYALTY_MARRIAGE_APPROVE); // [Phase 12b]
+    bumpLoyalty(proposal.survivorBId, LOYALTY_MARRIAGE_APPROVE);
     flashAlert(`${a?a.name:'?'} and ${b?b.name:'?'} are engaged.`);
     logChronicle('marriage', `${a?a.name:'?'} and ${b?b.name:'?'} become engaged`);
   } else if(decision === 'rejected'){
+    bumpLoyalty(proposal.survivorAId, LOYALTY_MARRIAGE_REJECT); // [Phase 12b]
+    bumpLoyalty(proposal.survivorBId, LOYALTY_MARRIAGE_REJECT);
     flashAlert(`The proposal between ${a?a.name:'?'} and ${b?b.name:'?'} is turned down.`);
   }
 }
@@ -7593,7 +8143,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       // within a second or two of loading, and saving live object
       // references would just be dangling pointers after restore.
       // [Phase 5 rework]
-      role: c.role
+      role: c.role,
+      // SCHEMA v12: real, earned trust — persist it, same reasoning as
+      // housingSatisfaction above (a smoothed value, not a transient
+      // claim). [Phase 12b]
+      loyaltyToFounder: c.loyaltyToFounder
     })),
     // SCHEMA v6: full ResourceKind set persisted, see the `resources`
     // declaration comment for what's actually live vs. stubbed. [Phase 6]
@@ -7610,6 +8164,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // used to bypass the between-events cooldown. [Phase 10]
     chronicle: chronicle.map(e => ({ id:e.id, category:e.category, title:e.title, detail:e.detail, day:e.day, year:e.year, season:e.season })),
     arrivalsAccepted, arrivalsRejected, lastEventDay,
+    // SCHEMA v12: Authority & Reputation's real, persistent state — the
+    // five reputation axes. [Phase 12b]
+    reputation,
     buildings: buildings.map(b => ({
       id: b.id, type: b.type, tx: b.tx, ty: b.ty,
       isComplete: b.isComplete, workRequired: b.workRequired, workDone: b.workDone,
@@ -7624,11 +8181,17 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       // stage/growth/lastYield are all real, earned world state (like
       // Phase 5's old flat `progress` was), not a transient claim.
       // assignedFarmerId is the one exception, dropped same as
-      // assignedBuilderId/cookAssignedId below — a survivor's persisted
+      // assignedBuilderId below — a survivor's persisted
       // `role` (see the survivor save note) means tryResumeRole() re-picks
       // this same plot for them within a cycle or two of loading, same
       // effective result without needing to save a live reference. [Phase 6, updated Phase 5 rework]
       farm: b.farm ? { cropId: b.farm.cropId, nextCropId: b.farm.nextCropId, stage: b.farm.stage, growth: b.farm.growth, lastYield: b.farm.lastYield } : undefined,
+      // [Phase 12c] cookAssignedId is a real designation now, not a
+      // reservation — nothing re-derives it on load the way
+      // tryResumeRole() re-derives assignedFarmerId/guardAssignedId, so
+      // unlike those it has to be saved explicitly or every campfire's
+      // cook would silently vanish on the next load.
+      cookAssignedId: b.cookAssignedId != null ? b.cookAssignedId : null,
       // SCHEMA v9: livestockCapacity is real, earned/lost world state (can
       // grow via an approved 'expand' request) — animalIds are dropped and
       // re-derived from the animals array below on load (same "don't save
@@ -7678,6 +8241,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // save/load would silently reset the ranch's whole economy. [Phase 5]
     resourceNodes: resourceNodes.map(n => ({ id:n.id, type:n.type, tx:n.tx, ty:n.ty, amount:n.amount, maxAmount:n.maxAmount })),
     groundPiles: groundPiles.map(p => ({ id:p.id, tx:p.tx, ty:p.ty, resource:p.resource, amount:p.amount })),
+    // SCHEMA v12: Ministers & their requests — real, persistent governance
+    // state, same shape as livestockRequests above. [Phase 12a]
+    ministers: ministers.map(m => ({ id:m.id, role:m.role, survivorId:m.survivorId, satisfaction:m.satisfaction, requestsApproved:m.requestsApproved, requestsRejected:m.requestsRejected })),
+    ministerRequests: ministerRequests.map(r => ({ id:r.id, ministerId:r.ministerId, role:r.role, requestedWorkers:r.requestedWorkers, approvedWorkers:r.approvedWorkers, recruitedWorkers:r.recruitedWorkers, reason:r.reason, status:r.status, day:r.day })),
     settlementTier: 'camp'
   };
   try{
@@ -7742,6 +8309,16 @@ async function performLoad(){
         // reservations are never restored — see save-side note.
         // [Phase 5 rework]
         if(cd.role !== undefined) restored.role = cd.role;
+        // [Phase 12c] a pre-12c save can restore role:'cook' or
+        // role:'drawwater' — neither is a real role anymore. 'drawwater'
+        // left JOB_LABELS entirely, so leaving it in place would crash
+        // survivorStatusLabel the first time it reads JOB_LABELS[role]
+        // (undefined.toLowerCase()). 'cook' still has a JOB_LABELS entry
+        // (the assign picker's title needs it) but is no longer a role a
+        // survivor holds — that attribution lives on the campfire's
+        // cookAssignedId now, restored independently below with the rest
+        // of `buildings`, so simply clearing it here loses nothing.
+        if(restored.role === 'cook' || restored.role === 'drawwater') restored.role = null;
         // SCHEMA v8: pre-8b saves have no injury field — falls back to
         // createSurvivor's fresh `injury: null`. [Phase 8b]
         if(cd.injury !== undefined) restored.injury = cd.injury;
@@ -7759,13 +8336,16 @@ async function performLoad(){
         if(cd.pregnancyStartDay !== undefined) restored.pregnancyStartDay = cd.pregnancyStartDay;
         if(cd.pregnancyFatherId !== undefined) restored.pregnancyFatherId = cd.pregnancyFatherId;
         if(cd.lastBirthDay !== undefined) restored.lastBirthDay = cd.lastBirthDay;
+        // SCHEMA v12: pre-Phase-12b saves have no loyaltyToFounder —
+        // falls back to createSurvivor's fresh neutral `50`. [Phase 12b]
+        if(cd.loyaltyToFounder !== undefined) restored.loyaltyToFounder = cd.loyaltyToFounder;
         survivors.push(restored);
       }
       survivorIdCounter = Math.max(...survivors.map(c=>c.id)) + 1;
       charterScreen.setAttribute('hidden','');
       // [UI cleanup] same as the founding path — a loaded save is also
       // a real game, un-hide the gameplay toggles plus settings/zoom.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
     }
 
@@ -7795,6 +8375,11 @@ async function performLoad(){
     arrivalsAccepted = state.arrivalsAccepted || 0;
     arrivalsRejected = state.arrivalsRejected || 0;
     lastEventDay = state.lastEventDay != null ? state.lastEventDay : -999;
+    // SCHEMA v12: pre-Phase-12b saves have no reputation object at all —
+    // falls back to the fresh, all-neutral-20 default already assigned
+    // at declaration, same fallback shape as ministers/ministerRequests
+    // below. [Phase 12b]
+    if(state.reputation) reputation = { ...reputation, ...state.reputation };
     pendingArrival = null;
     buildings.length = 0;
     buildingGrid.clear();
@@ -7820,9 +8405,14 @@ async function performLoad(){
           // within a cycle or two. farm progress DOES persist (it's real,
           // earned world state, not a transient claim). [Phase 5 rework]
           assignedBuilderId: null,
-          cookAssignedId: def.id === 'campfire' ? null : null,
+          // [Phase 12c] cookAssignedId flipped from a reservation to real,
+          // earned state the moment cook stopped being a role — there is
+          // no more tryResumeRole()-driven survivor to re-claim it after
+          // load, so unlike assignedBuilderId/guardAssignedId beside it,
+          // this one DOES need to persist, restored below.
+          cookAssignedId: bd.cookAssignedId != null ? bd.cookAssignedId : null,
           // SCHEMA v8: guard reservations are never persisted, same
-          // reasoning as assignedBuilderId/cookAssignedId above — every
+          // reasoning as assignedBuilderId above — every
           // Guard Post/Watchtower loads unclaimed, and a survivor whose
           // persisted `role` was 'guard' re-claims one via tryResumeRole().
           // hp/maxHP DO persist (real, earned/lost world state) — pre-8b
@@ -7903,6 +8493,32 @@ async function performLoad(){
     if(state.livestockRequests) for(const rd of state.livestockRequests) livestockRequests.push({ usedForPlacement:false, ...rd });
     livestockRequestIdCounter = livestockRequests.length ? Math.max(...livestockRequests.map(r=>r.id))+1 : 0;
 
+    // SCHEMA v12: Ministers & their requests. Pre-Phase-12a saves have
+    // neither field — falls back to empty (every department vacant,
+    // no requests pending), not a crash. [Phase 12a]
+    ministers.length = 0;
+    if(state.ministers) for(const md of state.ministers) ministers.push({ ...md });
+    ministerIdCounter = ministers.length ? Math.max(...ministers.map(m=>m.id))+1 : 0;
+    // [Phase 12b] founder-as-minister wasn't blocked when 12a first
+    // shipped — clean up any save from that window instead of leaving
+    // a founder holding a ministry the UI no longer lets anyone appoint
+    // them to.
+    ministers = ministers.filter(m => {
+      const s = survivors.find(x => x.id === m.survivorId);
+      return !(s && s.isFounder);
+    });
+
+    ministerRequests.length = 0;
+    if(state.ministerRequests) for(const rd of state.ministerRequests) ministerRequests.push({ ...rd });
+    ministerRequestIdCounter = ministerRequests.length ? Math.max(...ministerRequests.map(r=>r.id))+1 : 0;
+    // [Phase 12c] Kitchen Manager (role 'head-cook') no longer exists —
+    // a save from the 12b window can still have that minister appointed
+    // and/or requests pending under it. Drop anything keyed to a role
+    // MINISTER_ROLES doesn't recognize anymore, rather than leave a
+    // ghost department the UI has no way to show or resolve.
+    ministers = ministers.filter(m => MINISTER_ROLES[m.role]);
+    ministerRequests = ministerRequests.filter(r => MINISTER_ROLES[r.role]);
+
     // SCHEMA v5: resource nodes and ground piles are real world state —
     // restore them if the save has them (pre-Phase-5 saves fall back to
     // freshly spawned nodes and no piles, since those saves predate the
@@ -7931,7 +8547,7 @@ async function performLoad(){
     // that no longer exist post-restore — drop them all (role is left
     // alone; tryResumeRole() re-picks a fresh target for it cleanly from
     // the restored state). [Phase 5 rework]
-    for(const c of survivors){ c.job = null; c.carrying = null; c.waterDeliveryClaimedBy = null; c.state = 'idle'; c.path = []; }
+    for(const c of survivors){ c.job = null; c.carrying = null; c.state = 'idle'; c.path = []; }
 
     updateResourceBar();
     renderBuildMenu();
