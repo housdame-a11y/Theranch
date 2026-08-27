@@ -426,7 +426,23 @@
      arrivals, recalls, a 500ms refresh interval) and also drives
      renderAlerts() as a side effect, so deleting the element and all its
      call sites was unnecessary risk for a purely visual change. */
-  #survivorbar{ display:none; }
+  /* [Requested re-enable] restored — the founder needs a persistent,
+     clickable roster to get to a survivor's panel without hunting for
+     their sprite on the map. Was `display:none` "per request" earlier
+     in this project, with no other layout rule alongside it — but
+     .survivor-card is built as a flex item (flex-shrink:0 only means
+     anything inside a flex container), so restoring just meant deleting
+     the old display:none would have left the cards stacking vertically
+     with no scroll, not the horizontal roster the cards were designed
+     for. Real layout added here instead of assumed already present.
+     Flex, not the panel's radial-gradient/border treatment — this
+     isn't a dropdown menu, it's a persistent strip. */
+  #survivorbar{
+    display:flex; flex-direction:row; align-items:flex-end; gap:4px;
+    overflow-x:auto; overflow-y:hidden;
+    flex:1 1 auto; min-width:0; max-width:100%;
+    -webkit-overflow-scrolling:touch;
+  }
   .survivor-card{
     width:64px; flex-shrink:0; padding:6px 4px 5px;
     display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -1688,6 +1704,7 @@ function onNewDay(derived){
   updateMinisterRequests(); // [Phase 12a]
   updateMinisterRecruitment(); // [Phase 12a]
   updateLoyalty(); // [Phase 12b]
+  updateChallengerBuildup(); // [Phase 12c]
 }
 
 function onSeasonChange(derived){
@@ -1930,7 +1947,11 @@ function createFamily(name, memberIds){
     // this — added here rather than silently worked around. Set by the
     // caller (founder for the founding House, first member for an
     // arrival-created one, matching how House naming already works).
-    headId: memberIds.length ? memberIds[0] : null
+    headId: memberIds.length ? memberIds[0] : null,
+    // SCHEMA v12: political intensity toward becoming an actual council
+    // challenger — see the FACTIONS & CHALLENGER BUILDUP section.
+    // [Phase 12c]
+    challengerBuildup: 0
   };
 }
 function familyOf(survivor){
@@ -2608,6 +2629,95 @@ function reputationTitle(){
   return REPUTATION_TITLE[best];
 }
 
+/* =========================================================
+   === FACTIONS & CHALLENGER BUILDUP (Phase 12c) ===
+   Five exact IDs from the original. Faction membership is computed
+   live from each survivor's traits (never stored — traits are fixed at
+   creation but a House's prestige isn't, so recomputing keeps this
+   honest rather than caching something that can drift stale), "weighted
+   by their House's prestige" per the plan's own wording: each trait
+   that pulls toward a faction contributes 1 point, then the whole score
+   is scaled by (1 + familyPrestige/100) — a survivor from an
+   established, prestigious House has a louder, clearer political voice
+   than someone from a House with none yet. A survivor joins whichever
+   factions clear a real point of pull, capped at two, matching "0-2"
+   in the plan exactly — a survivor whose traits pull nowhere in
+   particular (nightowl, lazy, sickly, grumpy, coward — none of them
+   remotely political) ends up in zero factions, which is the correct,
+   honest answer for them, not a bug to paper over with a forced pick.
+
+   The trait -> faction mapping itself is this build's own interpretation
+   — the plan names the five factions but not what pulls a person toward
+   each, so this was a real design call, not a verified port, and is
+   flagged as such: Traditionalists (loyal, quiet, traditional — steady,
+   custom-minded, doesn't rock the boat), Reformists (honest, principled,
+   curious — conviction and appetite for change), Hawks (brave,
+   paranoid, brawler, bitter, aggressive — security-and-conflict
+   minded), Merchants (hardworker, quick, greedy — accumulation and
+   efficiency), Commons (friendly, generous, cheerful, greenthumb —
+   ordinary, community-minded, no real ideology). Each trait pulls
+   toward at most one faction, so a survivor's total membership count
+   is bounded by how many *distinct* factions their trait set touches,
+   not by trait count.
+
+   Challenger buildup is the other half — a rising political-intensity
+   score per House (not per faction; a House is what actually challenges
+   the founder in Phase 12d's council vote, factions are what its
+   members individually believe). Deliberately NOT modeled as growing
+   in a vacuum: it reads directly off Phase 12b's loyalty system,
+   because "a rival House's rising intensity" only makes real sense in
+   relation to how that House actually feels about the founder right
+   now. A prestigious House whose members are, on average, unhappy
+   with the founder builds toward becoming a real challenger fastest;
+   a prestigious but loyal House barely moves at all; a poor House
+   (whatever its loyalty) never builds much of anything, since it has
+   no real standing to challenge from. The founder's own House is
+   excluded outright — it can't rival itself. No original numbers exist
+   for the growth rate — flagged for audit, same as every other
+   delta introduced across 12a/12b. */
+const FACTIONS = ['traditionalists','reformists','hawks','merchants','commons'];
+const TRAIT_FACTION_PULL = {
+  loyal:'traditionalists', quiet:'traditionalists', traditional:'traditionalists',
+  honest:'reformists', principled:'reformists', curious:'reformists',
+  brave:'hawks', paranoid:'hawks', brawler:'hawks', bitter:'hawks', aggressive:'hawks',
+  hardworker:'merchants', quick:'merchants', greedy:'merchants',
+  friendly:'commons', generous:'commons', cheerful:'commons', greenthumb:'commons'
+};
+const FACTION_JOIN_THRESHOLD = 1; // one real trait pull (even from a zero-prestige House) is enough to count
+const CHALLENGER_BUILDUP_RATE = 0.4; // per day, at max prestige/min loyalty — flagged, no original number
+
+/* Live-computed, capped at two, matching the plan's "0-2" exactly. */
+function survivorFactions(c){
+  const raw = {};
+  for(const t of c.traits){
+    const f = TRAIT_FACTION_PULL[t.id];
+    if(f) raw[f] = (raw[f]||0) + 1;
+  }
+  const fam = c.familyId != null ? families.find(f=>f.id===c.familyId) : null;
+  const weight = 1 + (fam ? fam.prestige : 0) / 100;
+  return FACTIONS
+    .map(f => ({ f, score: (raw[f]||0) * weight }))
+    .filter(x => x.score >= FACTION_JOIN_THRESHOLD)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 2)
+    .map(x => x.f);
+}
+
+/* Daily — called once from onNewDay, same cadence as everything else
+   in this file that drifts. */
+function updateChallengerBuildup(){
+  const founder = survivors.find(s => s.isFounder);
+  const founderFamilyId = founder ? founder.familyId : null;
+  for(const f of families){
+    if(f.id === founderFamilyId) continue; // a House can't rival itself
+    const living = f.memberIds.map(id=>survivors.find(s=>s.id===id)).filter(s=>s && s.health>0);
+    if(!living.length) continue;
+    const avgLoyalty = living.reduce((sum,s)=>sum+(s.loyaltyToFounder!=null?s.loyaltyToFounder:50),0) / living.length;
+    const growth = (Math.min(100,f.prestige)/100) * (1 - avgLoyalty/100) * CHALLENGER_BUILDUP_RATE;
+    f.challengerBuildup = Math.max(0, (f.challengerBuildup||0) + growth);
+  }
+}
+
 /* SCHEMA v6: resources widened to the full ResourceKind set the original
    ever had, per GAME_PLAN's Phase 6 catalog — fiber/tools/eggs/milk/wool
    added as real (if currently mostly-idle) fields rather than invented
@@ -3254,6 +3364,50 @@ const JOB_LABELS = {
 // earns its keep. [Phase 5]
 const JOB_SKILL = { build:'building', haul:'building', chop:'building', mine:'building', farm:'farming', doctor:'medicine', guard:'combat' };
 const HAUL_CAPACITY_BASE = 10;
+
+/* [Requested addition] Job types offered directly from a survivor's own
+   info panel — the reverse direction from the existing "click a target,
+   then pick a worker" flow, for exactly the case that flow can't cover
+   well: haul has no single fixed station to click (piles come and go
+   all over the map), so there was previously no way to say "make Bob a
+   hauler" without hunting down a specific pile first. Reuses
+   findJobTarget() to find the nearest open target automatically — the
+   identical lookup a minister's recruit sweep already uses — so this
+   is a second entry point onto the exact same assignment machinery,
+   not a parallel system. Doctor stays off this list, same reason it
+   has no minister: the job does nothing yet (Phase 13). */
+const PANEL_ASSIGNABLE_JOBS = ['chop','mine','haul','farm','build','guard'];
+
+/* Cook isn't in findJobTarget anymore (Phase 12c made it a tag, not a
+   job) — small dedicated finder mirroring the shape the old cook branch
+   there used to have, since the panel needs the same "nearest open
+   station" lookup for it too. */
+function nearestOpenCampfire(c){
+  let best = null, bestD = Infinity;
+  for(const b of buildings){
+    if(b.type !== 'campfire' || !b.isComplete || b.cookAssignedId != null) continue;
+    const d = Math.hypot(b.tx*CONFIG.TILE-c.wx, b.ty*CONFIG.TILE-c.wy);
+    if(d < bestD){ bestD = d; best = b; }
+  }
+  return best;
+}
+
+/* The panel button's click handler for every PANEL_ASSIGNABLE_JOBS entry
+   plus 'cook'. Finds its own target and assigns, or says plainly why it
+   couldn't rather than doing nothing silently. */
+function assignJobFromPanel(c, jobType){
+  if(jobType === 'cook'){
+    const target = nearestOpenCampfire(c);
+    if(!target){ flashAlert('No campfire free to cook at right now.'); return; }
+    assignSurvivorToJob(c, 'cook', target);
+  } else {
+    const target = findJobTarget(jobType, c);
+    if(!target){ flashAlert(`No open ${JOB_LABELS[jobType].toLowerCase()} target available right now.`); return; }
+    assignSurvivorToJob(c, jobType, target);
+  }
+  updateInfoPanel();
+  renderSurvivorBar();
+}
 
 /* Shared, human-readable status for a survivor — "what are they doing
    right now". Used by the survivor info panel, the Roster panel, and the
@@ -4219,6 +4373,23 @@ function renderDynastyMenu(){
     `).join('')}
   ` : `<div class="row" style="opacity:0.75; font-style:italic; margin-top:8px;">no descendants yet</div>`;
 
+  // [Phase 12c] every House, not just marriage-eligible members — the
+  // founder's own House shown for context (no buildup, it can't rival
+  // itself), every other House's prestige and how much political
+  // intensity it's quietly building. Purely descriptive bands for the
+  // buildup number, same idiom as Ministers' report-line tone — not a
+  // literal threshold check (12d's actual "≥75% of the leader House's"
+  // contest condition lives in that phase, not here).
+  const founderNow = survivors.find(s=>s.isFounder);
+  const founderFamId = founderNow ? founderNow.familyId : null;
+  const buildupLabel = v => v>=30?'rising fast':v>=15?'organizing':v>=5?'murmuring':'quiet';
+  const housesHtml = families.length ? `
+    <div class="row" style="opacity:0.75; font-style:italic; margin-top:8px;">Houses</div>
+    ${families.map(f => `
+      <div class="row">${f.name}${f.id===founderFamId?' (yours)':''} — prestige ${Math.round(f.prestige)}${f.id===founderFamId?'':` · ${buildupLabel(f.challengerBuildup||0)} (${Math.round(f.challengerBuildup||0)})`}</div>
+    `).join('')}
+  ` : '';
+
   menu.innerHTML = `
     ${rows}
     ${eligible.length >= 2 ? `
@@ -4230,6 +4401,7 @@ function renderDynastyMenu(){
     </form>
     ` : ''}
     ${heirsHtml}
+    ${housesHtml}
   `;
 
   menu.querySelectorAll('.pr-decide').forEach(btn => {
@@ -6237,6 +6409,14 @@ function wireAssignButtons(){
 }
 
 function renderSurvivorPanel(c){
+  // [Bugfix] the panel re-renders every 500ms while selected (the
+  // setInterval below, for live mood/needs updates) — replacing
+  // innerHTML resets scrollTop to 0 every single time, which meant any
+  // button below the fold (the new Assign Job row included) would
+  // scroll back out from under a real tap within half a second of it
+  // becoming visible. Save and restore scroll position around the
+  // re-render instead.
+  const prevScrollTop = infoPanel.scrollTop;
   const traitsHtml = c.traits.map(t => `<span class="trait-tag" title="${t.desc}">${t.name}</span>`).join('');
   const topSkills = SKILL_LIST.slice().sort((a,b)=>c.skills[b]-c.skills[a]).slice(0,4);
   const skillsHtml = topSkills.map(s => `
@@ -6336,12 +6516,38 @@ function renderSurvivorPanel(c){
     `;
   }
 
+  // [Phase 12c] every survivor, not just the founder — an ordinary
+  // person's political alignment is real and inspectable whether or
+  // not they'll ever act on it.
+  const factions = survivorFactions(c);
+  const factionLabel = f => f.charAt(0).toUpperCase()+f.slice(1);
+  const factionsHtml = `
+    <div class="section-label">Faction${factions.length===1?'':'s'}</div>
+    <div class="row">${factions.length ? factions.map(factionLabel).join(', ') : 'no strong political alignment'}</div>
+  `;
+
+  // [Requested addition] direct job assignment from the survivor's own
+  // panel — the reverse direction from "click a target, then pick a
+  // worker", for cases like haul that have no single fixed target to
+  // click on in the first place.
+  const isCurrentCook = buildings.some(b => b.type==='campfire' && b.cookAssignedId === c.id);
+  const assignJobHtml = `
+    <div class="section-label">Assign Job</div>
+    <div class="minister-actions">
+      ${PANEL_ASSIGNABLE_JOBS.map(jt => `<button class="mini-btn secondary panel-assign-btn" data-jobtype="${jt}">${JOB_LABELS[jt]}</button>`).join('')}
+      ${isCurrentCook
+        ? `<button class="mini-btn secondary panel-undesignate-cook-btn">Remove Cook Tag</button>`
+        : `<button class="mini-btn secondary panel-assign-btn" data-jobtype="cook">Cook</button>`}
+    </div>
+  `;
+
   infoPanel.innerHTML = `
     <div class="title">${c.name} ${c.surname}${c.isFounder ? ' 👑' : ''}</div>
     <div class="row">${bg ? bg.name : ''} · ${stageLabel}, age ${Math.floor(c.age)} · ${c.gender==='f'?'woman':'man'}</div>
     <div class="row">${statusLine} · health ${c.health}%</div>
     <div class="row" style="color:${moodColor}; font-weight:600;">${moodLabel(c)} (${Math.round(c.mood)})</div>
     ${(c.job || c.role) ? `<button id="panelRecallBtn" class="mini-btn secondary">Recall to Idle</button>` : ''}
+    ${assignJobHtml}
     <div class="traits">${traitsHtml}</div>
     <div class="section-label">Top Skills</div>
     ${skillsHtml}
@@ -6349,6 +6555,7 @@ function renderSurvivorPanel(c){
     ${needsHtml}
     ${housingHtml}
     ${authorityHtml}
+    ${factionsHtml}
     ${relationshipHtml}
     ${dynastyHtml}
   `;
@@ -6357,6 +6564,15 @@ function renderSurvivorPanel(c){
     recallSurvivor(c);
     updateInfoPanel();
     renderSurvivorBar();
+  });
+  document.querySelectorAll('.panel-assign-btn').forEach(btn => {
+    btn.addEventListener('click', () => assignJobFromPanel(c, btn.dataset.jobtype));
+  });
+  const panelUndesignateCookBtn = document.querySelector('.panel-undesignate-cook-btn');
+  if(panelUndesignateCookBtn) panelUndesignateCookBtn.addEventListener('click', () => {
+    const b = buildings.find(bb => bb.type==='campfire' && bb.cookAssignedId === c.id);
+    if(b) undesignateCook(b);
+    updateInfoPanel();
   });
   document.querySelectorAll('.talk-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -6373,6 +6589,7 @@ function renderSurvivorPanel(c){
     setPreferredHeir(c.id);
     updateInfoPanel();
   });
+  infoPanel.scrollTop = prevScrollTop;
 }
 
 /* =========================================================
@@ -8207,7 +8424,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     })),
     // SCHEMA v9: the Families stub and full livestock state — see the
     // Families/Animals/Livestock Requests sections above. [Phase 9]
-    families: families.map(f => ({ id:f.id, name:f.name, prestige:f.prestige, memberIds:f.memberIds, headId:f.headId })),
+    families: families.map(f => ({ id:f.id, name:f.name, prestige:f.prestige, memberIds:f.memberIds, headId:f.headId, challengerBuildup:f.challengerBuildup })),
     // SCHEMA v11: relationships (Map -> array for JSON) and marriage
     // proposals — real, persistent world state. pendingTalk is NOT
     // included (transient, same reasoning as pendingArrival/pendingIncursion
@@ -8464,7 +8681,7 @@ async function performLoad(){
     // player re-founds; livestock-panel requests simply show nothing
     // pending, no crash). [Phase 9]
     families.length = 0;
-    if(state.families) for(const fd of state.families) families.push({ id:fd.id, name:fd.name, prestige:fd.prestige||0, memberIds:fd.memberIds||[], headId: fd.headId != null ? fd.headId : (fd.memberIds && fd.memberIds.length ? fd.memberIds[0] : null) });
+    if(state.families) for(const fd of state.families) families.push({ id:fd.id, name:fd.name, prestige:fd.prestige||0, memberIds:fd.memberIds||[], headId: fd.headId != null ? fd.headId : (fd.memberIds && fd.memberIds.length ? fd.memberIds[0] : null), challengerBuildup: fd.challengerBuildup||0 });
     familyIdCounter = families.length ? Math.max(...families.map(f=>f.id))+1 : 0;
 
     // SCHEMA v11: pre-Phase-11 saves have neither field — falls back to
