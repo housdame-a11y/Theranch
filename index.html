@@ -452,6 +452,13 @@
     flex:1 1 auto; min-width:0; max-width:100%;
     -webkit-overflow-scrolling:touch;
   }
+  /* [Bottom-left swap] #survivorbar sets display:flex unconditionally
+     above (higher specificity than the UA [hidden] rule), so hiding it
+     via the `hidden` attribute needs this explicit override — same
+     pattern as every other #id[hidden] rule in this file. Needed now
+     that the roster bar and #infopanel share the same bottom-left slot
+     and take turns being hidden (see syncBottomLeftPanel()). */
+  #survivorbar[hidden]{ display:none; }
   .survivor-card{
     width:64px; flex-shrink:0; padding:6px 4px 5px;
     display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -6117,7 +6124,13 @@ window.addEventListener('mousemove', (e)=>{
   // completely irrelevant to the panel's content whenever something IS
   // selected, and re-rendering in that case only exists to break the UI
   // the player is actively interacting with. Skipped entirely now.
-  if(!selectedSurvivor && !selectedTile) updateInfoPanel();
+  //
+  // [Bottom-left swap] Also no longer calling updateInfoPanel() here at
+  // all when nothing is selected. The info panel and the roster bar now
+  // share one slot and swap on *selection* (click), not on hover — a
+  // hover-driven refresh would otherwise flash the roster away and back
+  // every time the pointer drifted over a tree or building with nothing
+  // clicked. The panel now only ever changes in response to a click.
 });
 
 window.addEventListener('mouseup', ()=>{
@@ -6139,7 +6152,9 @@ canvas.addEventListener('click', (e)=>{
 
   const clickedSurvivor = getSurvivorAtScreen(sx, sy);
   if(clickedSurvivor){
-    selectedSurvivor = clickedSurvivor;
+    // [Toggle] clicking the already-selected survivor again deselects
+    // them — profile closes, roster bar takes the bottom-left slot back.
+    selectedSurvivor = (selectedSurvivor === clickedSurvivor) ? null : clickedSurvivor;
     selectedTile = null;
     updateInfoPanel();
     renderSurvivorBar();
@@ -6156,8 +6171,12 @@ canvas.addEventListener('click', (e)=>{
   const pileHere = ['wood','stone','water'].some(r => groundPileGrid.has(tx+','+ty+','+r));
   if(buildingHere || nodeHere || pileHere){
     selectedSurvivor = null;
-    selectedTile = MAP.tiles[ty*MAP.w+tx];
+    // [Toggle] clicking the already-selected tile again deselects it —
+    // same close-and-restore-roster behavior as re-clicking a survivor.
+    const alreadySelected = selectedTile && selectedTile.x===tx && selectedTile.y===ty;
+    selectedTile = alreadySelected ? null : MAP.tiles[ty*MAP.w+tx];
     updateInfoPanel();
+    renderSurvivorBar();
     return;
   }
 
@@ -6273,7 +6292,20 @@ function clampCamera(){
    === INFO PANEL ===
    ========================================================= */
 const infoPanel = document.getElementById('infopanel');
+const survivorBarEl = document.getElementById('survivorbar');
+/* [Bottom-left swap] The roster bar and the info panel now share the
+   single bottom-left slot instead of sitting side-by-side: whichever
+   one has something to show occupies that spot, and the other is
+   fully hidden (not just faded) so it doesn't reserve empty space.
+   Call this any time infoPanel.hidden might have changed. */
+function syncBottomLeftPanel(){
+  survivorBarEl.hidden = !infoPanel.hidden;
+}
 function updateInfoPanel(){
+  updateInfoPanelInner();
+  syncBottomLeftPanel();
+}
+function updateInfoPanelInner(){
   // [Removed per request] the "Wilderness / hover a tile to inspect"
   // placeholder no longer shows — when there's nothing worth displaying
   // (no survivor selected, no building/resource/pile under the
@@ -8415,9 +8447,15 @@ function renderSurvivorBar(){
       const id = parseInt(el.dataset.id, 10);
       const c = survivors.find(cc => cc.id === id);
       if(c){
-        selectedSurvivor = c;
-        selectedTile = null;
-        focusCameraOn(c.wx, c.wy);
+        // [Toggle] tapping the already-selected card again deselects —
+        // matches re-clicking the same survivor out on the map.
+        if(selectedSurvivor === c){
+          selectedSurvivor = null;
+        } else {
+          selectedSurvivor = c;
+          selectedTile = null;
+          focusCameraOn(c.wx, c.wy);
+        }
         updateInfoPanel();
         renderSurvivorBar();
       }
