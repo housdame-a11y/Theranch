@@ -269,13 +269,31 @@
 
   /* Bottom info panel (hover/selection) */
   #infopanel{
+    position:relative;
     flex:0 1 260px;
     min-width:0;
-    padding:10px 14px;
+    padding:10px 34px 10px 14px;
     font-size:14px;
     line-height:1.5;
     transition:opacity 0.15s ease;
   }
+  /* [Requested addition] Close button — same close/toggle action as
+     re-clicking the selected survivor or tile, just reachable without
+     having to find that exact spot again. Absolutely positioned in the
+     panel's own top-right corner rather than templated into each of the
+     5 innerHTML branches (survivor / building / blueprint / node /
+     pile) — added once, centrally, after any of them render (see
+     addPanelCloseButton()). */
+  .panel-close-btn{
+    position:absolute; top:8px; right:8px;
+    width:22px; height:22px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cinzel', serif; font-size:15px; font-weight:700; line-height:1;
+    background:rgba(43,29,20,0.08);
+    border:1px solid var(--ink); border-radius:50%;
+    color:var(--ink); opacity:0.7; cursor:pointer;
+  }
+  .panel-close-btn:hover, .panel-close-btn:active{ opacity:1; }
   #infopanel .title{
     font-family:'Cinzel', serif;
     font-weight:700;
@@ -360,20 +378,21 @@
   }
   #settingsToggleBtn svg{ width:24px; height:24px; display:block; }
   #settingsToggleBtn:active{ transform:translateY(1px); }
+  /* [Requested redesign] Settings used to open as a small dropdown
+     anchored under the corner button. Now it opens as a full-screen
+     modal, dead center, over the same dim backdrop #mainMenuScreen
+     uses for the New Game screen — every other panel is visually and
+     functionally covered by it (z-index above #bottombar/#settingsbar's
+     60), which is the "everything else disappears" effect requested,
+     without actually having to hide each panel individually. */
   #settingsmenu{
-    display:flex; flex-direction:column; gap:8px;
-    padding:12px; min-width:140px;
+    position:absolute; inset:0; z-index:80;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.78) 0%, rgba(20,13,9,0.95) 100%);
   }
   #settingsmenu[hidden]{ display:none; }
-  #settingsmenu button{
-    padding:7px 14px;
-    font-family:'Cinzel', serif; font-size:12px; font-weight:700;
-    letter-spacing:0.5px; text-transform:uppercase;
-  }
-  #saveStatus{
-    font-family:'JetBrains Mono', monospace; font-size:11.5px;
-    color:var(--ink); opacity:0.75;
-  }
+  #settingsmenu .menu-panel{ position:relative; }
 
   /* Survivor detail panel additions */
   #infopanel .traits{
@@ -420,6 +439,15 @@
     font-family:'Cinzel', serif; font-size:10px; font-weight:700;
     letter-spacing:0.5px; text-transform:uppercase;
     opacity:0.55; margin:8px 0 3px;
+  }
+  /* [Requested reorganization] groups the survivor profile into clear
+     clusters (identity → wellbeing → work → standing → social/family)
+     instead of one long unbroken scroll — a thin rule between clusters,
+     lighter than a section-label since it separates whole groups of
+     labeled sections rather than introducing one. */
+  #infopanel .panel-divider{
+    height:1px; margin:10px 0;
+    background:rgba(43,29,20,0.18);
   }
   /* [Livestock panel redesign] .section-label was only ever scoped to
      #infopanel — needed here too now that "Your Livestock" and
@@ -544,8 +572,18 @@
        absolutely positioned relative to its own bar instead, so opening
        it can never change that bar's flow size or move its siblings. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    display:flex; flex-direction:column; gap:6px;
-    padding:10px; min-width:190px;
+    /* [Horizontal layout] buildings used to stack one-per-row in a
+       narrow column; now laid out as a wrapping row of square cards so
+       several are visible side by side instead of scrolling through a
+       long vertical list. */
+    display:flex; flex-direction:row; flex-wrap:wrap; align-content:flex-start;
+    gap:8px;
+    padding:12px;
+    /* [Wider panels pass] widened further for the horizontal grid — a
+       narrow column only fit one card per row, defeating the point.
+       Still bounded by viewport width so it can't blow off-screen on a
+       narrow phone. */
+    width:max-content; max-width:min(calc(var(--local-vw, 100vw) * 0.94), 560px);
     /* Bug fix: was missing the max-height/overflow pattern every other
        panel (#jobsmenu etc.) already has — with 4 pens added on top of
        the base building list, this silently overflowed off-screen in
@@ -553,16 +591,20 @@
     /* [Bugfix] was min(70vh, 480px) — vh always measures the physical
        unrotated viewport, wrong once rotated. --local-vh (set in
        syncOrientation()) is the on-screen height in real px. */
-    max-height:min(calc(var(--local-vh, 100vh) * 0.70), 480px); overflow-y:auto;
+    max-height:min(calc(var(--local-vh, 100vh) * 0.72), 520px); overflow-y:auto;
   }
   #buildmenu[hidden]{ display:none; }
   .build-option{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:10px; padding:7px 10px;
+    /* [Horizontal layout] each option is now a fixed-width card (name
+       on top, cost below, centered) rather than a full-width row with
+       the name on the left and cost on the right — that left/right
+       layout only made sense stacked in a single column. */
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    width:100px; gap:5px; padding:9px 6px;
     background:rgba(232,217,181,0.5);
     border:1.5px solid var(--ink); border-radius:5px;
     font-family:'EB Garamond', serif; color:var(--ink);
-    cursor:pointer; text-align:left;
+    cursor:pointer; text-align:center;
   }
   .build-option:hover:not(:disabled){ background:rgba(232,217,181,0.9); }
   .build-option.active{
@@ -570,10 +612,11 @@
     box-shadow:0 0 0 2px var(--ember-bright);
   }
   .build-option:disabled{ opacity:0.4; cursor:not-allowed; }
-  .bo-name{ font-weight:600; font-size:13px; }
+  .bo-name{ font-weight:600; font-size:12.5px; line-height:1.2; }
   .bo-cost{
-    display:flex; align-items:center; gap:5px;
-    font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+    gap:5px 0;
+    font-family:'JetBrains Mono', monospace; font-size:11px;
     white-space:nowrap;
   }
   .bo-cost .dot{ margin-left:6px; }
@@ -646,9 +689,12 @@
        fix, applied consistently across all five toggle-group menus. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
     /* [Bugfix] was min(88vw, 480px) / 50vh — raw viewport units, wrong
-       once rotated; swapped to the local (on-screen) custom properties. */
-    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 480px);
-    max-height:calc(var(--local-vh, 100vh) * 0.50);
+       once rotated; swapped to the local (on-screen) custom properties.
+       [Wider panels pass] bumped from 480px/0.88 to 640px/0.92 and the
+       height cap from 0.50 to 0.62 — roster rows were wrapping status
+       text awkwardly at the old width. */
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 640px);
+    max-height:calc(var(--local-vh, 100vh) * 0.62);
     overflow:auto;
   }
   #jobsmenu[hidden]{ display:none; }
@@ -675,8 +721,11 @@
        [Bugfix] was min(88vw, 420px) / 55vh — swapped to local (on-screen)
        custom properties, same reasoning as #jobsmenu above. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
-    max-height:calc(var(--local-vh, 100vh) * 0.55);
+    /* [Wider panels pass] bumped from 420px/0.88 to 600px/0.92, and the
+       height cap from 0.55 to 0.65 — pen rows plus the raise-a-request
+       form were the tightest fit of the five panels. */
+    padding:12px; min-width:300px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 600px);
+    max-height:calc(var(--local-vh, 100vh) * 0.65);
     overflow:auto;
   }
   #livestockmenu[hidden]{ display:none; }
@@ -772,15 +821,38 @@
   }
   #chronicleToggleBtn svg{ width:24px; height:24px; display:block; }
   #chronicleToggleBtn:active{ transform:translateY(1px); }
+  /* [Requested redesign] Chronicle used to open as a small dropdown
+     anchored under its corner button (see #buildmenu's comment for the
+     original reflow-on-open bug this whole family of menus shared), then
+     as a centered card over a dim backdrop. [Follow-up: "full screen
+     means new page, all the screen, phone version"] — that centered
+     card still left backdrop visible around its edges; this now fills
+     the ENTIRE viewport edge-to-edge, like a dedicated page, with no
+     margin/backdrop showing at all. Still the highest z-index (80, above
+     every toggle bar's 60) so everything else is covered either way. */
   #chroniclemenu{
-    /* Menu now opens downward (column, not column-reverse) since the
-       button sits at the top of the screen, same as #settingsmenu. */
-    position:absolute; top:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
-    max-height:calc(var(--local-vh, 100vh) * 0.55);
-    overflow:auto;
+    position:absolute; inset:0; z-index:80;
+    display:flex;
+    padding:0;
+    background:var(--wood-dark);
   }
   #chroniclemenu[hidden]{ display:none; }
+  .chronicle-panel{
+    position:relative;
+    width:100%; height:100%; max-width:none; max-height:none;
+    display:flex; flex-direction:column;
+    border-radius:0; border-width:0;
+    box-shadow:none;
+    /* env() safe-area padding so the header/close button clear a phone
+       notch/status bar the same way #titlebar already accounts for. */
+    padding:max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  }
+  .chronicle-panel .assign-header{ margin-bottom:8px; flex-shrink:0; }
+  .chronicle-panel .title{
+    font-family:'Cinzel', serif; font-weight:700; font-size:19px;
+    letter-spacing:1px; color:var(--wood-mid);
+  }
+  #chronicleList{ flex:1; overflow-y:auto; }
   /* [Phase 11] Dynasty panel — same shape as Chronicle/Livestock */
   #dynastybar{
     position:relative;
@@ -815,8 +887,11 @@
   #ministersToggleBtn:active{ transform:translateY(1px); }
   #ministersmenu{
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
-    max-height:calc(var(--local-vh, 100vh) * 0.55);
+    /* [Wider panels pass] bumped from 420px/0.88 to 620px/0.92, and the
+       height cap from 0.55 to 0.65 — minister cards (title + meta +
+       report + action row) are the densest content of the five panels. */
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 620px);
+    max-height:calc(var(--local-vh, 100vh) * 0.65);
     overflow:auto;
   }
   #ministersmenu[hidden]{ display:none; }
@@ -866,8 +941,10 @@
        [Bugfix] was min(88vw, 420px) / 55vh — swapped to local (on-screen)
        custom properties, same reasoning as #jobsmenu above. */
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
-    padding:10px; max-width:min(calc(var(--local-vw, 100vw) * 0.88), 420px);
-    max-height:calc(var(--local-vh, 100vh) * 0.55);
+    /* [Wider panels pass] bumped from 420px/0.88 to 600px/0.92, and the
+       height cap from 0.55 to 0.65, matching the other four panels. */
+    padding:12px; min-width:300px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 600px);
+    max-height:calc(var(--local-vh, 100vh) * 0.65);
     overflow:auto;
   }
   #dynastymenu[hidden]{ display:none; }
@@ -1008,15 +1085,32 @@
      measure the physical unrotated viewport, wrong once rotated. Swapped
      to .local-narrow plus --local-vh, same reasoning as the HUD rule
      above. */
-  html.local-narrow #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 10px; max-height:calc(var(--local-vh, 100vh) * 0.70); overflow-y:auto; }
+  html.local-narrow #infopanel{ flex-basis:150px; font-size:12.5px; padding:8px 28px 8px 10px; max-height:calc(var(--local-vh, 100vh) * 0.70); overflow-y:auto; }
   html.local-narrow #infopanel .bar-label{ width:48px; }
   html.local-narrow .survivor-card{ width:52px; }
   html.local-narrow .survivor-card .cname{ max-width:46px; font-size:10px; }
-  html.local-narrow #buildmenu{ min-width:150px; padding:8px; }
-  html.local-narrow .bo-name{ font-size:12px; }
-  html.local-narrow #jobsmenu{ max-width:calc(var(--local-vw, 100vw) * 0.82); }
+  html.local-narrow #buildmenu{ padding:8px; gap:6px; max-width:calc(var(--local-vw, 100vw) * 0.92); }
+  html.local-narrow .build-option{ width:78px; padding:7px 5px; }
+  html.local-narrow .bo-name{ font-size:11px; }
+  html.local-narrow .bo-cost{ font-size:10px; }
+  html.local-narrow #jobsmenu{ min-width:0; max-width:calc(var(--local-vw, 100vw) * 0.82); }
   html.local-narrow .roster-row{ font-size:11.5px; }
   html.local-narrow .assign-panel{ max-width:calc(var(--local-vw, 100vw) * 0.92); }
+  /* [Wider panels pass] the desktop min-width bumps above (260-320px) are
+     too wide once the screen itself is narrow — same 0.82 cap the roster
+     panel already used, applied consistently to the other three dropdown
+     panels that got widened alongside it. (Chronicle is full-screen now,
+     handled separately below.) */
+  html.local-narrow #livestockmenu,
+  html.local-narrow #dynastymenu, html.local-narrow #ministersmenu{
+    min-width:0; max-width:calc(var(--local-vw, 100vw) * 0.82);
+  }
+  /* [Full-bleed follow-up] .chronicle-panel now fills 100% width/height
+     unconditionally (see its base rule above) so it no longer needs a
+     narrow-screen max-width cap — just trim its padding a little on
+     phones to leave more room for content. */
+  html.local-narrow .chronicle-panel{ padding:max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  html.local-narrow .chronicle-panel .title{ font-size:16px; }
 
   /* =========================================================
      FOUNDING CHARTER — Phase 2 intro screen, shown over the (already-
@@ -1069,6 +1163,25 @@
     font-family:'JetBrains Mono', monospace; font-size:11px;
     opacity:0.75; min-height:14px;
   }
+  /* [Requested] phone-sized (landscape-locked, so height is the tight
+     dimension) sizing for both menu screens — same local-short/xshort
+     breakpoints and shrink pattern already used for .charter-panel,
+     so Settings and New Game scale down together on short screens
+     instead of overflowing/getting clipped. */
+  html.local-short .menu-panel{
+    max-height:calc(var(--local-vh, 100vh) * 0.94);
+    overflow-y:auto;
+    padding:18px 22px 14px;
+  }
+  html.local-short .menu-header h1{ font-size:22px; }
+  html.local-short .menu-header p{ margin-bottom:14px; font-size:12px; }
+  html.local-short .menu-buttons{ gap:7px; }
+  html.local-xshort .menu-panel{ padding:12px 16px 10px; }
+  html.local-xshort .menu-header h1{ font-size:17px; margin-bottom:2px; }
+  html.local-xshort .menu-header p{ display:none; }
+  html.local-xshort .menu-buttons{ gap:5px; }
+  html.local-xshort .menu-btn{ padding:8px 16px; font-size:12px; }
+  html.local-xshort .menu-meta{ margin-top:6px; }
 
   #charterScreen{
     position:absolute; inset:0; z-index:50;
@@ -1241,8 +1354,8 @@
      denser rows so more of the list is visible before scrolling
      kicks in. Was 56vh — swapped to --local-vh for the same reason as
      everything else in this block. */
-  html.local-short #buildmenu, html.local-xnarrow #buildmenu{ max-height:calc(var(--local-vh, 100vh) * 0.56); gap:4px; padding:8px; }
-  html.local-short .build-option, html.local-xnarrow .build-option{ padding:5px 8px; gap:6px; }
+  html.local-short #buildmenu, html.local-xnarrow #buildmenu{ max-height:calc(var(--local-vh, 100vh) * 0.56); gap:5px; padding:8px; }
+  html.local-short .build-option, html.local-xnarrow .build-option{ width:68px; padding:6px 4px; gap:3px; }
   html.local-short .bo-name, html.local-xnarrow .bo-name{ font-size:12px; }
   html.local-short .bo-cost, html.local-xnarrow .bo-cost{ font-size:10.5px; }
   /* [Bugfix] same overflow as #buildmenu above, but for the survivor
@@ -1410,12 +1523,27 @@
       <circle cx="50" cy="50" r="12" fill="var(--parchment)"/>
     </svg>
   </button>
-  <div id="settingsmenu" class="panel" hidden>
-    <button id="saveBtn" class="mini-btn">Save</button>
-    <button id="loadBtn" class="mini-btn secondary">Load</button>
-    <button id="terrainGuideBtn" class="mini-btn secondary">Terrain</button>
-    <button id="backToMenuBtn" class="mini-btn secondary">Back to Menu</button>
-    <div id="saveStatus"></div>
+</div>
+
+<!-- [Requested redesign] Settings now opens as its own full-screen,
+     centered modal — same dim backdrop treatment as #mainMenuScreen —
+     rather than a small dropdown tucked under the corner button. Kept
+     as a top-level sibling here (not nested inside #settingsbar) so its
+     position:absolute;inset:0 sizes to the whole viewport, not to
+     #settingsbar's own small top-right box. -->
+<div id="settingsmenu" hidden>
+  <div class="menu-panel panel">
+    <button id="settingsCloseBtn" class="panel-close-btn" aria-label="Close" title="Close">&times;</button>
+    <div class="menu-header">
+      <h1>Settings</h1>
+    </div>
+    <div class="menu-buttons">
+      <button id="saveBtn" class="menu-btn">Save</button>
+      <button id="loadBtn" class="menu-btn secondary">Load</button>
+      <button id="terrainGuideBtn" class="menu-btn secondary">Terrain</button>
+      <button id="backToMenuBtn" class="menu-btn secondary">Back to Menu</button>
+    </div>
+    <div id="saveStatus" class="menu-meta"></div>
   </div>
 </div>
 
@@ -1450,7 +1578,24 @@
       <circle cx="78" cy="74" r="8" fill="var(--ink)"/>
     </svg>
   </button>
-  <div id="chroniclemenu" class="panel" hidden></div>
+</div>
+
+<!-- [Requested redesign] Chronicle now opens full-screen, dead center,
+     same dim-backdrop treatment as #settingsmenu/#terrainModal — instead
+     of a small dropdown anchored under its corner button. #chroniclemenu
+     itself is the full-screen overlay; .chronicle-panel is the actual
+     parchment panel centered inside it, sized much bigger than the old
+     dropdown since it no longer has to fit under a 44px button.
+     renderChronicleMenu() now writes into #chronicleList, not this outer
+     element directly. -->
+<div id="chroniclemenu" hidden>
+  <div class="panel chronicle-panel">
+    <button id="chronicleCloseBtn" class="panel-close-btn" aria-label="Close" title="Close">&times;</button>
+    <div class="assign-header">
+      <span class="title">Chronicle</span>
+    </div>
+    <div id="chronicleList"></div>
+  </div>
 </div>
 
 <div id="zoomcontrols" hidden>
@@ -3237,14 +3382,17 @@ function tryPlaceBuilding(typeId, tx, ty){
 
   updateResourceBar();
   // [Phase 9, gate fix] consume the authorization — one pen placement per
-  // approval, and force placementMode off so the player has to go back to
-  // the Livestock panel for the next one rather than accidentally placing
-  // a second pen while a stale approval sits unused. This deliberately
-  // breaks from the normal convention (placementMode otherwise persists
-  // after a successful placement, letting you drop several huts in a
-  // row) because a pen's authorization is genuinely one-time-use, not a
-  // reusable building type.
-  if(authReq){ authReq.usedForPlacement = true; placementMode = null; b.originatingRequestId = authReq.id; }
+  // approval, so a pen's originatingRequestId always gets recorded here
+  // regardless of the placementMode reset below.
+  if(authReq){ authReq.usedForPlacement = true; b.originatingRequestId = authReq.id; }
+  // [Requested change] placementMode always clears after a successful
+  // placement now — previously it persisted so you could drop several of
+  // the same building in a row without reopening the Build panel, but
+  // that left a "blueprint stuck to the cursor" feel players didn't want.
+  // Every placement now returns to hands-free; place another of the same
+  // type by reopening Build and picking it again.
+  placementMode = null;
+  updateHint(); // clears "placing X — click a valid tile" immediately, not just on next hover
   renderBuildMenu();
   flashBuildStatus(`${def.name} blueprint placed`);
   if(selectedTile && selectedTile.x===tx && selectedTile.y===ty) updateInfoPanel();
@@ -4085,9 +4233,37 @@ function flashBuildStatus(msg){
   setTimeout(()=>{ if(buildStatusEl.textContent === msg) buildStatusEl.textContent = ''; }, 2200);
 }
 
+/* [Panel exclusivity] Build/Roster/Livestock/Chronicle/Dynasty/Ministers
+   used to each toggle their own dropdown independently — opening one
+   never closed any other, so e.g. Build then Livestock left both open,
+   stacked/overlapping in the bottom-right corner. Every one of the six
+   toggle handlers below now calls this first, hiding every OTHER menu
+   in the group before flipping its own. Kept as one shared list (rather
+   than repeating the six ids inline six times) so a future seventh panel
+   only has to be added here once. */
+const TOGGLE_MENU_IDS = ['buildmenu','jobsmenu','livestockmenu','chroniclemenu','dynastymenu','ministersmenu'];
+function closeOtherMenus(exceptId){
+  for(const id of TOGGLE_MENU_IDS){
+    if(id === exceptId) continue;
+    const el = document.getElementById(id);
+    if(el && !el.hidden){
+      el.hidden = true;
+      // [Requested redesign] chroniclemenu pauses the game on open (see
+      // openChronicleMenu) — if it's ever closed this way instead of via
+      // closeChronicleMenu(), still balance that pauseGame() call so
+      // pauseDepth doesn't get stuck above 0. In practice chroniclemenu's
+      // full-screen z-index makes the other toggle buttons unclickable
+      // while it's open, so this is a defensive fallback, not the normal path.
+      if(id === 'chroniclemenu') resumeGame();
+    }
+  }
+}
+
 document.getElementById('buildToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('buildmenu');
-  menu.hidden = !menu.hidden;
+  const opening = menu.hidden;
+  closeOtherMenus('buildmenu');
+  menu.hidden = !opening;
   if(!menu.hidden) renderBuildMenu();
 });
 
@@ -4127,7 +4303,9 @@ function renderJobsMenu(){
 }
 document.getElementById('jobsToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('jobsmenu');
-  menu.hidden = !menu.hidden;
+  const opening = menu.hidden;
+  closeOtherMenus('jobsmenu');
+  menu.hidden = !opening;
   if(!menu.hidden) renderJobsMenu();
 });
 
@@ -4311,7 +4489,9 @@ function renderMinistersPanel(){
 }
 document.getElementById('ministersToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('ministersmenu');
-  menu.hidden = !menu.hidden;
+  const opening = menu.hidden;
+  closeOtherMenus('ministersmenu');
+  menu.hidden = !opening;
   if(!menu.hidden) renderMinistersPanel();
 });
 
@@ -4401,21 +4581,26 @@ function reassignPenCaretaker(buildingId, newCaretakerId){
 }
 document.getElementById('livestockToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('livestockmenu');
-  menu.hidden = !menu.hidden;
+  const opening = menu.hidden;
+  closeOtherMenus('livestockmenu');
+  menu.hidden = !opening;
   if(!menu.hidden) renderLivestockMenu();
 });
 
 /* =========================================================
    === CHRONICLE PANEL (Phase 10) ===
+   [Requested redesign] full-screen now (see #chroniclemenu's CSS) —
+   renders into #chronicleList, the scrollable body inside the fixed
+   header+close-button panel, rather than into the whole modal element.
    ========================================================= */
 function renderChronicleMenu(){
-  const menu = document.getElementById('chroniclemenu');
+  const list = document.getElementById('chronicleList');
   if(!chronicle.length){
-    menu.innerHTML = `<div class="row" style="padding:6px;">nothing recorded yet</div>`;
+    list.innerHTML = `<div class="row" style="padding:6px;">nothing recorded yet</div>`;
     return;
   }
   // newest first
-  menu.innerHTML = chronicle.slice().reverse().map(e => `
+  list.innerHTML = chronicle.slice().reverse().map(e => `
     <div class="chronicle-entry">
       <span class="ce-tag">${e.category}</span><span class="ce-title">${e.title}</span>
       ${e.detail ? `<div class="row" style="opacity:0.85;">${e.detail}</div>` : ''}
@@ -4423,10 +4608,31 @@ function renderChronicleMenu(){
     </div>
   `).join('');
 }
+function openChronicleMenu(){
+  const menu = document.getElementById('chroniclemenu');
+  closeOtherMenus('chroniclemenu');
+  menu.hidden = false;
+  renderChronicleMenu();
+  // [Requested redesign] full-screen, blocking modal now, same as
+  // Settings/the assign picker — pause while it's open rather than
+  // letting the world keep running unseen behind it.
+  pauseGame();
+}
+function closeChronicleMenu(){
+  const menu = document.getElementById('chroniclemenu');
+  if(menu.hidden) return;
+  menu.hidden = true;
+  resumeGame();
+}
 document.getElementById('chronicleToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('chroniclemenu');
-  menu.hidden = !menu.hidden;
-  if(!menu.hidden) renderChronicleMenu();
+  if(menu.hidden) openChronicleMenu(); else closeChronicleMenu();
+});
+document.getElementById('chronicleCloseBtn').addEventListener('click', closeChronicleMenu);
+// Clicking the dim backdrop itself (not the panel sitting on top of it)
+// closes the menu too, same convention as #settingsmenu/#assignModal.
+document.getElementById('chroniclemenu').addEventListener('click', (e)=>{
+  if(e.target.id === 'chroniclemenu') closeChronicleMenu();
 });
 
 /* =========================================================
@@ -4535,15 +4741,54 @@ function renderDynastyMenu(){
 }
 document.getElementById('dynastyToggleBtn').addEventListener('click', ()=>{
   const menu = document.getElementById('dynastymenu');
-  menu.hidden = !menu.hidden;
+  const opening = menu.hidden;
+  closeOtherMenus('dynastymenu');
+  menu.hidden = !opening;
   if(!menu.hidden) renderDynastyMenu();
 });
 
-/* [UI cleanup] Settings toggle — no render function needed, Save/Load
-   are static buttons, not a dynamic list like the other panels. */
+/* [Requested redesign] Settings toggle — now opens/closes the
+   full-screen modal (see #settingsmenu's CSS) instead of a small
+   dropdown, and pauses the game while it's open since the world is
+   fully covered by the dim backdrop underneath it. pauseGame()/
+   resumeGame() use a depth counter (see their definitions), so this
+   nests safely with confirmDialog's own pause/resume inside Back to
+   Menu below.
+   [Requested] The dim backdrop alone still let bright elements (the
+   HUD's white/parchment text, toggle-button icons) show faintly
+   through it, so this also explicitly hides the toggle-button bars,
+   the title/logo, and the resources HUD (nested inside #titlebar) the
+   same way the existing Back to Menu flow already does — rather than
+   relying on the overlay's opacity alone — and restores them on close. */
+const UI_CHROME_HIDE_IDS = ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','zoomcontrols','titlebar','settingsbar'];
+const settingsMenu = document.getElementById('settingsmenu');
+function openSettingsMenu(){
+  settingsMenu.removeAttribute('hidden');
+  UI_CHROME_HIDE_IDS.forEach(id => document.getElementById(id).setAttribute('hidden',''));
+  infoPanel.setAttribute('hidden','');
+  survivorBarEl.setAttribute('hidden','');
+  pauseGame();
+}
+function closeSettingsMenu(){
+  if(settingsMenu.hidden) return;
+  settingsMenu.setAttribute('hidden','');
+  UI_CHROME_HIDE_IDS.forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  // Whichever of the roster bar / info panel should actually be showing
+  // depends on current selection state — let updateInfoPanel() work
+  // that out again rather than blindly unhiding both.
+  updateInfoPanel();
+  renderSurvivorBar();
+  resumeGame();
+}
 document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
-  const menu = document.getElementById('settingsmenu');
-  menu.hidden = !menu.hidden;
+  if(settingsMenu.hidden) openSettingsMenu(); else closeSettingsMenu();
+});
+document.getElementById('settingsCloseBtn').addEventListener('click', closeSettingsMenu);
+// Clicking the dim backdrop itself (not the panel sitting on top of it)
+// closes the menu too — e.target is only the backdrop element when the
+// click didn't land on (and bubble up from) the panel inside it.
+settingsMenu.addEventListener('click', (e)=>{
+  if(e.target === settingsMenu) closeSettingsMenu();
 });
 
 /* [Added per request] Terrain Guide — replaces the old bottom-left
@@ -4634,7 +4879,7 @@ function openNextOperationalAssignPrompt(){
 function advanceOperationalAssignQueue(){
   operationalAssignQueue.shift();
   if(operationalAssignQueue.length > 0) openNextOperationalAssignPrompt();
-  else resumeGame();
+  else{ restoreUIChrome(); resumeGame(); }
 }
 
 function openAssignPicker(type, target, opts){
@@ -4643,21 +4888,49 @@ function openAssignPicker(type, target, opts){
   document.getElementById('assignSub').textContent = (opts && opts.sub) || 'choose who takes this on — it\'ll pull them off whatever they\'re currently doing';
   renderAssignList();
   assignModal.hidden = false;
+  // [Requested] same treatment as the Settings overlay — hide every
+  // toggle-button bar, the title/logo + resources HUD, and the roster
+  // line while the picker is up, rather than leaving them visible (and
+  // clickable) underneath the dim backdrop. Restored in closeAssignPicker
+  // only once the picker is actually done (see the queue-draining note
+  // there) so a multi-item operational-assign queue doesn't flicker the
+  // chrome back on between prompts.
+  UI_CHROME_HIDE_IDS.forEach(id => document.getElementById(id).setAttribute('hidden',''));
+  infoPanel.setAttribute('hidden','');
+  survivorBarEl.setAttribute('hidden','');
   // [Pause] skipPause: used when a queue (see operationalAssignQueue below)
   // already paused once for the whole sequence — avoids double-counting
   // pauseDepth per queued item, which would leave the game stuck paused
   // after the last one closes.
   if(!(opts && opts.skipPause)) pauseGame();
 }
+function restoreUIChrome(){
+  // Restore the chrome hidden in openAssignPicker. Whichever of the
+  // roster bar / info panel should actually be showing depends on
+  // current selection state — let updateInfoPanel()/renderSurvivorBar()
+  // work that out again rather than blindly unhiding both, same as
+  // closeSettingsMenu(). Shared by closeAssignPicker's no-queue path and
+  // advanceOperationalAssignQueue's queue-drained path — [Bugfix] this
+  // used to live only inside closeAssignPicker's else-branch, which
+  // never actually ran for operational-assign prompts (farmer/cook/
+  // guard) since those always go through the queue branch instead, even
+  // on their very last item — the buttons/logo/resources/roster stayed
+  // hidden forever after assigning a farmer. Now both paths call this.
+  UI_CHROME_HIDE_IDS.forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  updateInfoPanel();
+  renderSurvivorBar();
+}
 function closeAssignPicker(){
   assignModal.hidden = true;
   pendingAssign = null;
   // [Pause] if an operational-assignment queue is mid-sequence, closing
   // the current prompt advances to the next queued item instead of fully
-  // resuming — resumeGame() only fires once the whole queue is drained.
-  // Empty queue (every other use of this modal) behaves exactly as before.
+  // resuming — resumeGame() only fires once the whole queue is drained
+  // (see advanceOperationalAssignQueue, which also calls restoreUIChrome()
+  // once it does). Empty queue (every other use of this modal) behaves
+  // exactly as before.
   if(operationalAssignQueue.length > 0) advanceOperationalAssignQueue();
-  else resumeGame();
+  else{ restoreUIChrome(); resumeGame(); }
 }
 function renderAssignList(){
   if(!pendingAssign) return;
@@ -5578,7 +5851,15 @@ foundBtn.addEventListener('click', () => {
   // [UI cleanup] the 5 gameplay toggle groups, plus settings/zoom,
   // are hidden until there's an actual game to show — this is founding
   // completing for real.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  // [Bottom-left swap] 'infopanel' removed from this reveal list — it
+  // used to be force-unhidden here unconditionally, which stomped right
+  // over the correct hidden=true that spawnFoundingParty's own
+  // updateInfoPanel() call had just set (nothing is selected yet at
+  // founding), leaving an empty panel-shaped box sitting in the
+  // bottom-left slot next to the roster. Its visibility is entirely
+  // selection-driven now (see syncBottomLeftPanel()) — it manages its
+  // own hidden attribute and never needs a manual reveal.
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -5694,7 +5975,7 @@ function confirmDialog(message, title){
 document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
-  document.getElementById('settingsmenu').setAttribute('hidden','');
+  closeSettingsMenu();
   ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
@@ -6301,8 +6582,32 @@ const survivorBarEl = document.getElementById('survivorbar');
 function syncBottomLeftPanel(){
   survivorBarEl.hidden = !infoPanel.hidden;
 }
+/* [Requested addition] Close button for the info panel — deselects
+   whatever's currently selected, same effect as clicking that same
+   survivor/tile again, so the roster bar comes back to the bottom-left
+   slot. */
+function closeInfoPanel(){
+  selectedSurvivor = null;
+  selectedTile = null;
+  updateInfoPanel();
+  renderSurvivorBar();
+}
+function addPanelCloseButton(){
+  const btn = document.createElement('button');
+  btn.className = 'panel-close-btn';
+  btn.setAttribute('aria-label', 'Close');
+  btn.title = 'Close';
+  btn.textContent = '\u00d7';
+  btn.addEventListener('click', closeInfoPanel);
+  infoPanel.appendChild(btn);
+}
 function updateInfoPanel(){
   updateInfoPanelInner();
+  // Added once here, centrally, after whichever of the 5 render
+  // branches above (survivor / building / blueprint / node / pile) ran —
+  // rather than templated into each — so every panel type gets the
+  // same close button without repeating it 5 times.
+  if(!infoPanel.hidden) addPanelCloseButton();
   syncBottomLeftPanel();
 }
 function updateInfoPanelInner(){
@@ -6717,18 +7022,26 @@ function renderSurvivorPanel(c){
   infoPanel.innerHTML = `
     <div class="title">${c.name} ${c.surname}${c.isFounder ? ' 👑' : ''}</div>
     <div class="row">${bg ? bg.name : ''} · ${stageLabel}, age ${Math.floor(c.age)} · ${c.gender==='f'?'woman':'man'}</div>
-    <div class="row">${statusLine} · health ${c.health}%</div>
-    <div class="row" style="color:${moodColor}; font-weight:600;">${moodLabel(c)} (${Math.round(c.mood)})</div>
-    ${(c.job || c.role) ? `<button id="panelRecallBtn" class="mini-btn secondary">Recall to Idle</button>` : ''}
-    ${assignJobHtml}
     <div class="traits">${traitsHtml}</div>
-    <div class="section-label">Top Skills</div>
-    ${skillsHtml}
+
+    <div class="panel-divider"></div>
+    <div class="row" style="color:${moodColor}; font-weight:600;">${moodLabel(c)} (${Math.round(c.mood)}) · health ${c.health}%</div>
     <div class="section-label">Needs</div>
     ${needsHtml}
     ${housingHtml}
+
+    <div class="panel-divider"></div>
+    <div class="row">${statusLine}</div>
+    ${(c.job || c.role) ? `<button id="panelRecallBtn" class="mini-btn secondary">Recall to Idle</button>` : ''}
+    ${assignJobHtml}
+    <div class="section-label">Top Skills</div>
+    ${skillsHtml}
+
+    ${(authorityHtml || factionsHtml) ? '<div class="panel-divider"></div>' : ''}
     ${authorityHtml}
     ${factionsHtml}
+
+    ${(relationshipHtml || dynastyHtml) ? '<div class="panel-divider"></div>' : ''}
     ${relationshipHtml}
     ${dynastyHtml}
   `;
@@ -8741,8 +9054,16 @@ async function performLoad(){
       charterScreen.setAttribute('hidden','');
       // [UI cleanup] same as the founding path — a loaded save is also
       // a real game, un-hide the gameplay toggles plus settings/zoom.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      // [Bottom-left swap] 'infopanel' removed here too, same reason as
+      // the founding path — its hidden state is selection-driven, not
+      // part of this generic reveal.
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
+      // Nothing is selected right after a load, so this just enforces
+      // infopanel hidden / roster bar shown in the bottom-left slot.
+      selectedSurvivor = null;
+      selectedTile = null;
+      updateInfoPanel();
     }
 
     if(state.resources){
