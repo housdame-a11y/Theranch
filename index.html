@@ -123,8 +123,8 @@
     position:absolute; top:0; left:0; right:0;
     display:flex; flex-direction:column;
     /* Top padding matches #settingsbar's `top` (max(14px, safe-area-inset))
-       exactly, and #hudpanel below is a fixed 44px tall (same as the
-       settings button) — that combination is what actually lines up the
+       exactly, and #hudpanel below is a fixed 35px tall (same as the
+       settings button, after the 20% shrink) — that combination is what actually lines up the
        clock/resources row with the settings button, rather than eyeballing
        a single offset that only happens to work for one line-height. */
     padding:max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
@@ -172,12 +172,17 @@
     display:flex; flex-direction:column; align-items:flex-end; gap:4px;
     pointer-events:auto;
     /* Reserve room so this column clears the fixed top-right Settings
-       button (44px circle, right:14px) instead of sitting under it. */
-    margin-right:56px;
+       button (35px circle after the 20% shrink, right:14px) instead of
+       sitting under it. */
+    margin-right:47px;
   }
+  /* [20% smaller pass — desktop] base hudpanel/button size cut by 20%
+     (44px -> 35px) to match the requested resources-bar/button shrink;
+     mirrors the two mobile-only passes already applied under
+     html.local-narrow further down, now brought to the base rules too. */
   #hudpanel{
-    display:flex; align-items:center; gap:12px;
-    height:44px; padding:0 14px; box-sizing:border-box;
+    display:flex; align-items:center; gap:10px;
+    height:35px; padding:0 11px; box-sizing:border-box;
     pointer-events:auto;
   }
   .hud-divider{
@@ -186,18 +191,18 @@
     flex:0 0 auto;
   }
   #clockpanel{
-    display:flex; align-items:center; gap:7px;
+    display:flex; align-items:center; gap:6px;
     font-family:'JetBrains Mono', monospace;
-    font-size:12px;
+    font-size:9.5px;
     white-space:nowrap;
   }
   #clockpanel[hidden]{ display:none; }
   #hudpanel:has(#clockpanel[hidden]) .hud-divider{ display:none; }
-  #clockIcon{ font-size:14px; }
+  #clockIcon{ font-size:11px; }
   /* [Pause] */
   #pauseIndicator{
-    font-family:'Cinzel', serif; font-weight:700; font-size:11.5px;
-    letter-spacing:0.4px; text-transform:uppercase;
+    font-family:'Cinzel', serif; font-weight:700; font-size:9px;
+    letter-spacing:0.3px; text-transform:uppercase;
     color:var(--ember-bright);
     white-space:nowrap;
     animation: pause-pulse 1.6s ease-in-out infinite;
@@ -205,11 +210,11 @@
   #pauseIndicator[hidden]{ display:none; }
   @keyframes pause-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.55; } }
   #resourcebar{
-    display:flex; gap:12px;
+    display:flex; gap:10px;
   }
   #forecastLine{
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:9px;
     color:var(--parchment-dark);
     opacity:0.85;
     padding-right:2px;
@@ -217,14 +222,14 @@
   #forecastLine:empty{ display:none; }
   #forecastLine.warn{ color:#e0703f; opacity:1; font-weight:600; }
   .resource{
-    display:flex; align-items:center; gap:6px;
+    display:flex; align-items:center; gap:5px;
     font-family:'JetBrains Mono', monospace;
-    font-size:13px;
+    font-size:10.5px;
     font-weight:600;
     white-space:nowrap;
   }
   .resource .dot{
-    width:9px; height:9px; border-radius:2px;
+    width:7px; height:7px; border-radius:1.5px;
     display:inline-block;
   }
   .dot.wood{ background:#7a5230; }
@@ -315,7 +320,7 @@
      Chronicle button now sitting directly under Settings (44px button +
      8px gap ≈ 52px) — see #chroniclebar's CSS. */
   #zoomcontrols{
-    position:absolute; top:122px; right:max(14px, env(safe-area-inset-right)); z-index:60;
+    position:absolute; top:104px; right:max(14px, env(safe-area-inset-right)); z-index:60;
     display:flex; flex-direction:column; gap:6px;
   }
   #zoomcontrols[hidden]{ display:none; }
@@ -369,14 +374,14 @@
      the ranch's own mark, distinct from the toggle-btn look everywhere
      else, doubling as a natural "settings/menu" affordance. */
   #settingsToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #settingsToggleBtn svg{ width:24px; height:24px; display:block; }
+  #settingsToggleBtn svg{ width:19px; height:19px; display:block; }
   #settingsToggleBtn:active{ transform:translateY(1px); }
   /* [Requested redesign] Settings used to open as a small dropdown
      anchored under the corner button. Now it opens as a full-screen
@@ -553,14 +558,14 @@
   }
   #buildbar[hidden]{ display:none; }
   #buildToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #buildToggleBtn img{ height:24px; width:auto; display:block; }
+  #buildToggleBtn img{ height:19px; width:auto; display:block; }
   #buildToggleBtn:active{ transform:translateY(1px); }
   #buildmenu{
     /* [Bugfix] was a normal-flow sibling of the toggle button inside
@@ -621,17 +626,18 @@
   }
   .bo-cost .dot{ margin-left:6px; }
   .bo-cost .dot:first-child{ margin-left:0; }
-  /* [Bugfix] buildStatus/placementStatus were normal-flow siblings inside
-     #buildbar (a flex item of #bottomright) — once their text filled in
-     (flashBuildStatus / updateHint), #buildbar grew wider and the
-     flex-wrap row reflowed, visibly shifting every other icon button
-     (Roster/Livestock/Chronicle/Dynasty/Ministers). Same root cause as
-     #buildmenu's fix above. Wrapped in #buildStatusStack, taken out of
-     flow entirely and anchored to the LEFT of the toggle button (not
-     above it, since #buildmenu already occupies the space above and the
-     two can be visible together — e.g. a "can't build there" flash while
-     still in placement mode) so #buildbar's box always stays button-sized
-     regardless of status text. */
+  /* [Bugfix] buildStatus was a normal-flow sibling inside #buildbar (a
+     flex item of #bottomright) — once its text filled in
+     (flashBuildStatus), #buildbar grew wider and the flex-wrap row
+     reflowed, visibly shifting every other icon button (Roster/Livestock/
+     Chronicle/Dynasty/Ministers). Same root cause as #buildmenu's fix
+     above. Wrapped in #buildStatusStack, taken out of flow entirely and
+     anchored to the LEFT of the toggle button (not above it, since
+     #buildmenu already occupies the space above) so #buildbar's box
+     always stays button-sized regardless of status text.
+     [Requested change] placementStatus used to live here too but now
+     reads as plain text under the resources tab instead — see its own
+     CSS rule. */
   #buildStatusStack{
     position:absolute; bottom:0; right:calc(100% + 8px); z-index:19;
     display:flex; flex-direction:column-reverse; align-items:flex-end;
@@ -644,11 +650,15 @@
     text-align:right; max-width:200px;
   }
   #buildStatus:empty{ display:none; }
+  /* [Requested change] plain text under the resources tab, same treatment
+     as #forecastLine right above it — no panel background/border/shadow,
+     just a small italic line that appears and disappears with the text. */
   #placementStatus{
-    font-family:'EB Garamond', serif; font-style:italic; font-size:11.5px;
-    padding:5px 10px; max-width:220px; text-align:right;
+    font-family:'EB Garamond', serif; font-style:italic; font-size:11px;
+    color:var(--parchment-dark); opacity:0.85;
+    padding-right:2px; text-align:right;
   }
-  #placementStatus:empty{ display:none; padding:0; }
+  #placementStatus:empty{ display:none; }
 
   /* Roster panel — Phase 5 rework. Used to be a priority grid (see git
      history / GAME_PLAN.md's old Phase 5 writeup); now every job starts
@@ -675,14 +685,14 @@
      either now that each has its own explicit 44px circular styling
      below. Removed rather than rescoped, since nothing needs it anymore. */
   #jobsToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #jobsToggleBtn svg{ width:24px; height:24px; display:block; }
+  #jobsToggleBtn svg{ width:19px; height:19px; display:block; }
   #jobsToggleBtn:active{ transform:translateY(1px); }
   #jobsmenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
@@ -706,14 +716,14 @@
   }
   #livestockbar[hidden]{ display:none; }
   #livestockToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #livestockToggleBtn img{ height:24px; width:auto; display:block; }
+  #livestockToggleBtn img{ height:19px; width:auto; display:block; }
   #livestockToggleBtn:active{ transform:translateY(1px); }
   #livestockmenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
@@ -807,19 +817,19 @@
      and #zoomcontrols is pushed down below it (see its own rule) so the
      two don't overlap on desktop. */
   #chroniclebar{
-    position:absolute; top:70px; right:max(14px, env(safe-area-inset-right)); z-index:60;
+    position:absolute; top:61px; right:max(14px, env(safe-area-inset-right)); z-index:60;
     display:flex; flex-direction:column; align-items:flex-end; gap:8px;
   }
   #chroniclebar[hidden]{ display:none; }
   #chronicleToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--ember-bright), var(--ember));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #chronicleToggleBtn svg{ width:24px; height:24px; display:block; }
+  #chronicleToggleBtn svg{ width:19px; height:19px; display:block; }
   #chronicleToggleBtn:active{ transform:translateY(1px); }
   /* [Requested redesign] Chronicle used to open as a small dropdown
      anchored under its corner button (see #buildmenu's comment for the
@@ -860,14 +870,14 @@
   }
   #dynastybar[hidden]{ display:none; }
   #dynastyToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #dynastyToggleBtn img{ height:24px; width:auto; display:block; }
+  #dynastyToggleBtn img{ height:19px; width:auto; display:block; }
   #dynastyToggleBtn:active{ transform:translateY(1px); }
   /* [Phase 12a] Ministers panel — same shape as Dynasty/Chronicle/Livestock */
   #ministersbar{
@@ -876,14 +886,14 @@
   }
   #ministersbar[hidden]{ display:none; }
   #ministersToggleBtn{
-    width:44px; height:44px; padding:0;
+    width:35px; height:35px; padding:0;
     display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
     border:2px solid var(--ink); border-radius:50%;
     color:var(--ink); cursor:pointer;
     box-shadow:0 3px 8px rgba(0,0,0,0.4);
   }
-  #ministersToggleBtn svg{ width:24px; height:24px; display:block; }
+  #ministersToggleBtn svg{ width:19px; height:19px; display:block; }
   #ministersToggleBtn:active{ transform:translateY(1px); }
   #ministersmenu{
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
@@ -1489,6 +1499,13 @@
         </div>
       </div>
       <div id="forecastLine"></div>
+      <!-- [Requested change] placement status ("placing X — click a valid
+           tile…") now reads as plain text under the resources tab, same
+           treatment as forecastLine right above it — not a boxed panel
+           anchored by the Build button. See its CSS rule for the styling
+           change; updateHint() still just writes textContent into this
+           same id, unchanged. -->
+      <div id="placementStatus"></div>
     </div>
   </div>
   <!-- [Layout] flows in normal document order directly below the row
@@ -1720,13 +1737,10 @@
         <img src="data:image/png;base64,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" alt="" aria-hidden="true">
       </button>
       <div id="buildmenu" class="panel" hidden></div>
-      <!-- [Bugfix] wrapped so these can be taken out of flow together —
+      <!-- [Bugfix] wrapped so this can be taken out of flow —
            see #buildStatusStack's CSS comment for why. -->
       <div id="buildStatusStack">
         <span id="buildStatus"></span>
-        <!-- persistent placement-mode indicator, separate from buildStatus's
-             transient auto-clearing flashes — see updateHint() -->
-        <span id="placementStatus" class="panel"></span>
       </div>
     </div>
   </div>
@@ -4220,9 +4234,15 @@ function renderBuildMenu(){
     btn.addEventListener('click', ()=>{
       if(btn.disabled) return;
       const type = btn.dataset.type;
-      placementMode = (placementMode===type) ? null : type;
+      const selecting = placementMode !== type; // false = this click is deselecting the active type
+      placementMode = selecting ? type : null;
       renderBuildMenu();
       updateHint();
+      // [Requested change] picking a building type closes the build panel
+      // immediately, same as any other menu closing once its job is done —
+      // placementStatus (see updateHint above) keeps showing what's active
+      // and how to cancel, so nothing is lost by hiding the menu itself.
+      if(selecting) menu.hidden = true;
     });
   });
 }
@@ -6580,6 +6600,20 @@ const survivorBarEl = document.getElementById('survivorbar');
    fully hidden (not just faded) so it doesn't reserve empty space.
    Call this any time infoPanel.hidden might have changed. */
 function syncBottomLeftPanel(){
+  // [Bugfix] Settings and the Assign picker explicitly force-hide both
+  // infoPanel and survivorBarEl together (see openSettingsMenu/
+  // openAssignPicker) so the chrome underneath the dim backdrop is fully
+  // gone. But this function also runs every single frame from render()
+  // (see the comment at its call site there), and was unconditionally
+  // recomputing survivorBarEl.hidden from infoPanel.hidden — which
+  // re-showed the roster bar on the very next frame regardless of that
+  // explicit hide, since infoPanel.hidden being true made
+  // `!infoPanel.hidden` false, i.e. "unhide". That's why the roster bar
+  // alone stayed visible over Settings/Assign while every other bit of
+  // chrome (buttons, logo, resources) correctly disappeared: nothing else
+  // gets its hidden state stomped on 60x/sec. Skip the resync entirely
+  // while either overlay owns the chrome.
+  if(!settingsMenu.hidden || !assignModal.hidden) return;
   survivorBarEl.hidden = !infoPanel.hidden;
 }
 /* [Requested addition] Close button for the info panel — deselects
