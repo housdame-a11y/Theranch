@@ -236,16 +236,16 @@
      physical device width, which is wrong once the page is rotated (see
      the syncOrientation() comment). .local-narrow is computed from the
      actual on-screen width and stays correct in both orientations.
-     [20% smaller pass] all four values below (hudpanel height/padding,
-     resourcebar gap, resource font-size) reduced a further 20% from the
-     previous phone sizes (33px->26px height, 8px->6px gaps, 12px->10px
-     text) to match the 20%-smaller toggle buttons below — hudpanel must
-     stay the same height as Settings so they sit on one line. */
-  html.local-narrow #hudpanel{ gap:6px; padding:4px 8px; height:26px; }
-  html.local-narrow #resourcebar{ gap:6px; }
-  html.local-narrow .resource{ font-size:10px; }
-  html.local-narrow .resource .dot{ width:7px; height:7px; }
-  html.local-narrow #clockpanel{ font-size:9px; }
+     [20% smaller pass #2] a further 20% off the previous phone pass
+     (26px->21px height, 6px->5px gaps, 10px->8px text, 7px->6px dots,
+     9px->7px clock text) to match the 20%-smaller-again toggle buttons
+     below — hudpanel must stay the same height as Settings so they sit
+     on one line. */
+  html.local-narrow #hudpanel{ gap:5px; padding:3px 6px; height:21px; }
+  html.local-narrow #resourcebar{ gap:5px; }
+  html.local-narrow .resource{ font-size:8px; }
+  html.local-narrow .resource .dot{ width:6px; height:6px; }
+  html.local-narrow #clockpanel{ font-size:7px; }
 
   /* Bottom UI cluster: info panel (left) / survivor bar (center) / build+zoom (right).
      A single flex row reserves space for each so they can't overlap regardless of
@@ -611,6 +611,12 @@
     display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
   }
   #jobsbar[hidden]{ display:none; }
+  /* [Temp removal] Roster button hidden "for now" per request — the JS
+     still un-hides #jobsbar at founding/load (see the removeAttribute
+     calls elsewhere), so this CSS override forces it off regardless of
+     that attribute rather than touching those call sites. Delete this
+     rule to bring the button back. */
+  #jobsbar{ display:none !important; }
   /* [Bugfix] a leftover rule from an earlier icon-less design
      (width:118px, meant for text-label buttons) was still here and
      collided with .toggle-btn being reused for the charter's gender
@@ -823,7 +829,9 @@
      75% size (44px -> 33px, 24px icon -> 18px) to save space on phones.
      [20% smaller pass] shrunk a further 20% from that 33px/18px (roughly
      60% of the original 44px/24px): 33px -> 26px, 18px icon -> 14px.
-     #hudpanel is shrunk to the same 26px height (see its own mobile rule
+     [20% smaller pass #2] shrunk a further 20% again, to 21px / 11px icon
+     (roughly 48% of the original 44px/24px).
+     #hudpanel is shrunk to the same 21px height (see its own mobile rule
      above) so it stays on the same line as Settings.
      NOTE: this has to come AFTER all seven base button/icon rules above —
      equal-specificity selectors (#id or #id tag) fall back to source
@@ -836,14 +844,14 @@
   html.local-narrow #settingsToggleBtn, html.local-narrow #buildToggleBtn, html.local-narrow #dynastyToggleBtn,
   html.local-narrow #chronicleToggleBtn, html.local-narrow #livestockToggleBtn, html.local-narrow #jobsToggleBtn,
   html.local-narrow #ministersToggleBtn{
-    width:26px; height:26px;
+    width:21px; height:21px;
   }
   html.local-narrow #settingsToggleBtn svg, html.local-narrow #jobsToggleBtn svg, html.local-narrow #chronicleToggleBtn svg,
   html.local-narrow #ministersToggleBtn svg{
-    width:14px; height:14px;
+    width:11px; height:11px;
   }
   html.local-narrow #buildToggleBtn img, html.local-narrow #dynastyToggleBtn img, html.local-narrow #livestockToggleBtn img{
-    height:14px;
+    height:11px;
   }
   #dynastymenu{
     /* [Bugfix] see #buildmenu's comment — same reflow-on-open bug, same
@@ -885,6 +893,36 @@
     letter-spacing:0.5px; padding:1px 6px; border-radius:8px;
     background:var(--moss); color:var(--parchment); margin-right:5px;
   }
+  /* [Added per request] Terrain Guide modal — plain reference list,
+     opened from Settings, replacing the old bottom-left per-tile readout. */
+  #terrainModal{
+    position:absolute; inset:0; z-index:60;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
+  }
+  #terrainModal[hidden]{ display:none; }
+  #terrainList{ overflow-y:auto; display:flex; flex-direction:column; }
+  .terrain-entry{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:8px 6px; border-bottom:1px solid rgba(43,29,20,0.15);
+    font-family:'EB Garamond', serif; font-size:12.5px;
+  }
+  .terrain-entry:last-child{ border-bottom:none; }
+  .terrain-swatch{
+    width:16px; height:16px; border-radius:4px; flex-shrink:0; margin-top:2px;
+    border:1.5px solid var(--ink);
+  }
+  .terrain-entry .te-title{ font-weight:600; }
+  .terrain-entry .te-tags{ margin:2px 0 3px; }
+  .terrain-entry .te-tag{
+    display:inline-block; font-size:9.5px; text-transform:uppercase;
+    letter-spacing:0.5px; padding:1px 6px; border-radius:8px;
+    margin-right:5px;
+    background:var(--moss); color:var(--parchment);
+  }
+  .terrain-entry .te-tag.no{ background:var(--danger); }
+  .terrain-entry .te-desc{ opacity:0.85; }
   .assign-panel{
     /* [Bugfix] was 78vh — swapped to the local (on-screen) height. */
     width:100%; max-width:380px; max-height:calc(var(--local-vh, 100vh) * 0.78);
@@ -1368,8 +1406,23 @@
   <div id="settingsmenu" class="panel" hidden>
     <button id="saveBtn" class="mini-btn">Save</button>
     <button id="loadBtn" class="mini-btn secondary">Load</button>
+    <button id="terrainGuideBtn" class="mini-btn secondary">Terrain</button>
     <button id="backToMenuBtn" class="mini-btn secondary">Back to Menu</button>
     <div id="saveStatus"></div>
+  </div>
+</div>
+
+<!-- [Added per request] terrain reference — replaces the old bottom-left
+     panel's per-tile walkable/buildable readout with a single lookup the
+     player can open from Settings instead. -->
+<div id="terrainModal" hidden>
+  <div class="panel assign-panel">
+    <div class="assign-header">
+      <span class="title">Terrain Guide</span>
+      <button id="terrainCloseBtn" class="mini-btn secondary">Close</button>
+    </div>
+    <div class="assign-sub">What each ground type means for building and travel.</div>
+    <div id="terrainList"></div>
   </div>
 </div>
 
@@ -1457,10 +1510,7 @@
 </div>
 
 <div id="bottombar">
-  <div id="infopanel" class="panel" hidden>
-    <div class="title">Wilderness</div>
-    <div class="row">hover a tile to inspect</div>
-  </div>
+  <div id="infopanel" class="panel" hidden></div>
 
   <div id="survivorbar"></div>
 
@@ -4489,6 +4539,48 @@ document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
   menu.hidden = !menu.hidden;
 });
 
+/* [Added per request] Terrain Guide — replaces the old bottom-left
+   per-tile walkable/buildable readout (see updateInfoPanel()) with a
+   single reference list opened from Settings. Descriptions here are the
+   only place this text lives; TERRAIN itself only carries the raw
+   walkable/buildable flags used by movement/placement logic. */
+const TERRAIN_GUIDE_INFO = {
+  grass:      { desc:'Open ground — walkable and buildable. The default, easiest tile to settle on.' },
+  'tall-grass': { desc:'Thicker grass than plain Grass, but behaves the same — walkable and buildable.' },
+  forest:     { desc:'Trees growing here can be chopped for wood. Walkable, but not buildable — clear it first.' },
+  water:      { desc:'Lakes and rivers. Not walkable and not buildable — survivors path around it.' },
+  stone:      { desc:'Rocky outcrops that can be mined for stone. Walkable, but not buildable.' },
+  dirt:       { desc:'Bare, open earth. Walkable and buildable, same as Grass.' },
+  road:       { desc:'Worn paths through the settlement. Walkable, but not buildable.' },
+  ruin:       { desc:'Remnants of structures from before. Walkable, but not buildable.' }
+};
+function renderTerrainGuide(){
+  const list = document.getElementById('terrainList');
+  list.innerHTML = Object.values(TERRAIN).map(t=>{
+    const info = TERRAIN_GUIDE_INFO[t.id] || { desc:'' };
+    const label = t.id.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    return `
+      <div class="terrain-entry">
+        <span class="terrain-swatch" style="background:${t.color}"></span>
+        <div>
+          <div class="te-title">${label}</div>
+          <div class="te-tags">
+            <span class="te-tag ${t.walkable?'':'no'}">${t.walkable?'walkable':'not walkable'}</span>
+            <span class="te-tag ${t.buildable?'':'no'}">${t.buildable?'buildable':'not buildable'}</span>
+          </div>
+          <div class="te-desc">${info.desc}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+document.getElementById('terrainGuideBtn').addEventListener('click', ()=>{
+  renderTerrainGuide();
+  document.getElementById('terrainModal').hidden = false;
+});
+document.getElementById('terrainCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('terrainModal').hidden = true;
+});
+
 /* =========================================================
    === ARRIVAL MODAL BUTTONS (Phase 10) ===
    ========================================================= */
@@ -6182,13 +6274,21 @@ function clampCamera(){
    ========================================================= */
 const infoPanel = document.getElementById('infopanel');
 function updateInfoPanel(){
+  // [Removed per request] the "Wilderness / hover a tile to inspect"
+  // placeholder no longer shows — when there's nothing worth displaying
+  // (no survivor selected, no building/resource/pile under the
+  // hovered/selected tile), the panel just hides itself instead of
+  // filling with idle text. Re-shown by any branch below that actually
+  // has something to say.
+  infoPanel.hidden = false;
   if(selectedSurvivor){
     renderSurvivorPanel(selectedSurvivor);
     return;
   }
   const tile = selectedTile || hoveredTile;
   if(!tile){
-    infoPanel.innerHTML = `<div class="title">Wilderness</div><div class="row">hover a tile to inspect</div>`;
+    infoPanel.hidden = true;
+    infoPanel.innerHTML = '';
     return;
   }
   const buildingHere = buildingGrid.get(tile.x+','+tile.y);
@@ -6234,14 +6334,14 @@ function updateInfoPanel(){
       return;
     }
   }
-  const t = tile.terrain;
-  const label = t.id.charAt(0).toUpperCase() + t.id.slice(1);
-  infoPanel.innerHTML = `
-    <div class="title">${label}</div>
-    <div class="row">coords: ${tile.x}, ${tile.y}</div>
-    <div class="row">walkable: ${t.walkable ? 'yes' : 'no'}</div>
-    <div class="row">buildable: ${t.buildable ? 'yes' : 'no'}</div>
-  `;
+  // [Removed per request] plain-terrain tiles (grass/water/forest/etc.
+  // with nothing built or growing on them) used to fill this panel with
+  // type/coords/walkable/buildable details on click. That reference now
+  // lives in Settings → Terrain instead (see renderTerrainGuide()), so a
+  // plain-terrain click/hover just hides the panel — same as nothing
+  // being hovered/selected at all.
+  infoPanel.hidden = true;
+  infoPanel.innerHTML = '';
 }
 
 function renderBuildingPanel(b){
