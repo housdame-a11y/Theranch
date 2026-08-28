@@ -421,7 +421,7 @@
     background:rgba(43,29,20,0.18);
     overflow:hidden;
   }
-  #infopanel .bar-fill{ height:100%; border-radius:3px; }
+  #infopanel .bar-fill{ display:block; height:100%; border-radius:3px; }
   #infopanel .bar-fill.skill{ background:var(--ember); }
   #infopanel .bar-fill.need{ background:var(--moss); }
   #infopanel .bar-fill.need.low{ background:var(--danger); }
@@ -8287,7 +8287,31 @@ function render(now){
     updatePendingTalk(); // [Phase 11]
     updateSurvivors(dt);
   }
+  // [Bugfix] updateResourceBar() used to be a manual, call-it-yourself-
+  // after-every-mutation function (see its own comment above) — but the
+  // haul delivery path (3 separate resources[...] += sites, all inside
+  // updateSurvivorJob's 'carrying'/'topile' phases) never actually
+  // called it, so the display only ever refreshed as a side effect of
+  // some unrelated action elsewhere (placing a building, etc.) happening
+  // to call it too. That's exactly "sometimes it updates" — the
+  // underlying resources were always correct (confirmed spendable), only
+  // the display lagged. Same fix as the clock HUD already uses one line
+  // below: run it every frame instead of hunting down and patching every
+  // individual mutation site (and risking missing the next one). The
+  // work itself (two textContent-cheap DOM writes) costs nothing extra
+  // running 60x/sec that it wasn't already costing running from a dozen
+  // scattered call sites.
+  updateResourceBar();
   updateClockHUD();
+  // [Bugfix] same class of bug as updateResourceBar() above:
+  // syncBottomLeftPanel() was only called from inside updateInfoPanel(),
+  // but 13 separate places set selectedSurvivor/selectedTile back to
+  // null directly without going through it — so the roster bar could
+  // get left stuck hidden (stale from whatever the last real selection
+  // was) even once nothing was selected anymore. Same fix as before:
+  // run it every frame instead of trying to catch and patch all 13
+  // sites (and the next one someone adds later).
+  syncBottomLeftPanel();
 
   const dpr = devicePixelRatio;
   ctx.setTransform(dpr,0,0,dpr,0,0);
