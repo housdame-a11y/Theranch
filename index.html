@@ -3283,6 +3283,15 @@ function updateFarms(dt){
    swap doesn't touch this section again.
    ========================================================= */
 let placementMode = null; // a BUILDING_TYPES key while the player is placing, else null
+// [Requested feature] palisade-only two-click wall tool: click once to
+// place the first section and remember it here; click a second tile
+// anywhere and every tile on the straight/diagonal line between the two
+// (inclusive) gets a palisade too. null whenever not mid-line. See
+// handleBuildClick() below for the actual two-click state machine —
+// this only ever holds a value for typeId 'palisade', deliberately not
+// generalized to every building type per the request ("when I click
+// palisade only").
+let wallLineStart = null;
 
 /* All the tiles a building of type `typeId` would occupy if its anchor
    (top-left) tile were (tx,ty). Anchor is always the footprint's north-west
@@ -3306,10 +3315,19 @@ function canPlaceBuilding(typeId, tx, ty){
   return true;
 }
 
-function tryPlaceBuilding(typeId, tx, ty){
+/* Core single-tile placement — validation, resource deduction, the
+   building object itself, grid registration. No placementMode/UI-refresh/
+   assign-picker side effects, so both the normal single-click flow and
+   the palisade line tool can share it without either one's UI behavior
+   leaking into the other. Returns the building on success, null on
+   failure. Pass silent:true to suppress the per-tile failure toast
+   (used by the line tool, which shows one combined summary instead of
+   spamming "can't build there" once per skipped tile). */
+function placeOneBuildingCore(typeId, tx, ty, opts){
+  const silent = opts && opts.silent;
   const def = BUILDING_TYPES[typeId];
-  if(!def) return;
-  if(!canPlaceBuilding(typeId, tx, ty)){ flashBuildStatus('can\'t build there'); return; }
+  if(!def) return null;
+  if(!canPlaceBuilding(typeId, tx, ty)){ if(!silent) flashBuildStatus('can\'t build there'); return null; }
   // [Phase 9, redesigned] Three real scenarios, not one gated flow:
   //   1) the founder builds a pen directly, any time — no request needed.
   //   2) a survivor asks first; if there's a matching approved, unused
@@ -3331,7 +3349,7 @@ function tryPlaceBuilding(typeId, tx, ty){
   // beyond wood/stone was silently free. Three of Phase 9's four pens
   // cost fiber; this is what makes that cost actually real.
   const affordable = Object.keys(def.cost).every(k => (resources[k]||0) >= def.cost[k]);
-  if(!affordable){ flashBuildStatus('not enough resources'); return; }
+  if(!affordable){ if(!silent) flashBuildStatus('not enough resources'); return null; }
   Object.keys(def.cost).forEach(k => { resources[k] -= def.cost[k]; });
 
   const b = {
@@ -3399,6 +3417,14 @@ function tryPlaceBuilding(typeId, tx, ty){
   // approval, so a pen's originatingRequestId always gets recorded here
   // regardless of the placementMode reset below.
   if(authReq){ authReq.usedForPlacement = true; b.originatingRequestId = authReq.id; }
+  return b;
+}
+
+function tryPlaceBuilding(typeId, tx, ty){
+  const def = BUILDING_TYPES[typeId];
+  if(!def) return;
+  const b = placeOneBuildingCore(typeId, tx, ty);
+  if(!b) return;
   // [Requested change] placementMode always clears after a successful
   // placement now — previously it persisted so you could drop several of
   // the same building in a row without reopening the Build panel, but
@@ -3416,6 +3442,83 @@ function tryPlaceBuilding(typeId, tx, ty){
   // pauseGame() call) until the player answers.
   openAssignPicker('build', b, { sub: `who's building the ${def.name}?` });
   return b;
+}
+
+/* Standard Bresenham line, inclusive of both endpoints, 8-directional —
+   works for a straight run, any diagonal, or an arbitrary two-point line,
+   without special-casing "same row" / "same column". */
+function tileLine(x0, y0, x1, y1){
+  const points = [];
+  const dx = Math.abs(x1-x0), dy = Math.abs(y1-y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy, x = x0, y = y0;
+  while(true){
+    points.push({ x, y });
+    if(x === x1 && y === y1) break;
+    const e2 = 2*err;
+    if(e2 > -dy){ err -= dy; x += sx; }
+    if(e2 < dx){ err += dx; y += sy; }
+  }
+  return points;
+}
+
+/* [Requested feature] fills every tile between wallLineStart and (tx,ty)
+   with palisade — the second click of the two-click wall tool. The start
+   tile itself is skipped (already placed on the first click); any tile
+   along the way that's blocked or unaffordable is silently skipped
+   rather than aborting the whole line, matching how a single click
+   already behaves on an invalid tile. One combined status message at the
+   end instead of one toast per segment. Deliberately does NOT open the
+   per-tile "who's building this?" picker the normal single-placement
+   flow does — popping N modals for an N-tile wall would break the
+   click-move-click flow this tool exists for; assign builders afterward
+   from each section's own info panel instead. */
+function placeWallLine(typeId, x0, y0, x1, y1){
+  const path = tileLine(x0, y0, x1, y1);
+  let placed = 0, skipped = 0;
+  for(let i=1; i<path.length; i++){ // i=1: skip the already-placed start tile
+    const t = path[i];
+    const b = placeOneBuildingCore(typeId, t.x, t.y, { silent: true });
+    if(b) placed++; else skipped++;
+  }
+  const def = BUILDING_TYPES[typeId];
+  if(placed === 0 && skipped > 0){
+    flashBuildStatus(`wall blocked — no ${def.name.toLowerCase()} sections placed`);
+  } else if(skipped > 0){
+    flashBuildStatus(`${def.name} wall: ${placed+1} placed, ${skipped} skipped (blocked or unaffordable)`);
+  } else {
+    flashBuildStatus(`${def.name} wall: ${placed+1} sections placed`);
+  }
+}
+
+/* [Requested feature] entry point the canvas click handler calls for any
+   placement — routes to the normal single-click flow for every building
+   type except palisade, which gets the two-click line tool instead. See
+   the wallLineStart declaration above for the full explanation of why
+   this is scoped to palisade only rather than generalized. */
+function handleBuildClick(typeId, tx, ty){
+  if(typeId !== 'palisade'){
+    tryPlaceBuilding(typeId, tx, ty);
+    return;
+  }
+  if(!wallLineStart){
+    // First click: place one normally, but skip tryPlaceBuilding's
+    // auto-assign-picker (see placeWallLine's own comment on why) and
+    // don't clear placementMode — stay armed for the second click.
+    const b = placeOneBuildingCore(typeId, tx, ty);
+    if(!b) return; // invalid tile / can't afford — stay in placement mode, try again
+    wallLineStart = { x: tx, y: ty };
+    updateHint();
+    flashBuildStatus('Palisade placed — click another tile to wall a line, or Esc to stop');
+    if(selectedTile && selectedTile.x===tx && selectedTile.y===ty) updateInfoPanel();
+    return;
+  }
+  // Second click: fill the line, then return to hands-free.
+  placeWallLine(typeId, wallLineStart.x, wallLineStart.y, tx, ty);
+  wallLineStart = null;
+  placementMode = null;
+  updateHint();
+  renderBuildMenu();
 }
 
 function cancelBuilding(b){
@@ -4236,6 +4339,7 @@ function renderBuildMenu(){
       const type = btn.dataset.type;
       const selecting = placementMode !== type; // false = this click is deselecting the active type
       placementMode = selecting ? type : null;
+      wallLineStart = null; // reopening/switching Build always cancels any in-progress wall line
       renderBuildMenu();
       updateHint();
       // [Requested change] picking a building type closes the build panel
@@ -4994,7 +5098,14 @@ function updateHint(){
   if(!el) return;
   if(placementMode){
     const def = BUILDING_TYPES[placementMode];
-    el.textContent = `placing ${def.name} — click a valid tile · right-click or Esc to cancel`;
+    // [Requested feature] mid-wall-line status differs from the normal
+    // placing-a-single-building one — tells the player the tool is
+    // armed for the second click, not asking them to place a fresh one.
+    if(wallLineStart){
+      el.textContent = `${def.name} wall started — click another tile to complete the line · right-click or Esc to cancel`;
+    } else {
+      el.textContent = `placing ${def.name} — click a valid tile · right-click or Esc to cancel`;
+    }
   } else {
     el.textContent = '';
   }
@@ -6447,7 +6558,7 @@ canvas.addEventListener('click', (e)=>{
   if(tx<0 || tx>=MAP.w || ty<0 || ty>=MAP.h) return;
 
   if(placementMode){
-    tryPlaceBuilding(placementMode, tx, ty);
+    handleBuildClick(placementMode, tx, ty);
     return;
   }
 
@@ -6504,6 +6615,7 @@ canvas.addEventListener('contextmenu', (e)=>{
   e.preventDefault();
   if(placementMode){
     placementMode = null;
+    wallLineStart = null;
     renderBuildMenu();
     updateHint();
   }
@@ -6512,6 +6624,7 @@ canvas.addEventListener('contextmenu', (e)=>{
 window.addEventListener('keydown', (e)=>{
   if(e.key === 'Escape' && placementMode){
     placementMode = null;
+    wallLineStart = null;
     document.getElementById('buildmenu').hidden = true;
     renderBuildMenu();
     updateHint();
@@ -8556,10 +8669,36 @@ function shadeColor(hex, amt){
 function drawPlacementGhost(){
   if(!placementMode || !hoveredTile) return;
   const def = BUILDING_TYPES[placementMode];
+  const tw = ISO.TILE_W * camera.zoom, th = ISO.TILE_H * camera.zoom;
+
+  // [Requested feature] mid-wall-line: preview the whole path from the
+  // first click to the current hover, not just the single hovered tile —
+  // "move and see where the wall will land" before committing the
+  // second click. Each tile validated independently (canPlaceBuilding
+  // doesn't know about the other tiles-to-be in the same line), same
+  // rule placeWallLine itself uses to decide what to skip.
+  if(placementMode === 'palisade' && wallLineStart){
+    const path = tileLine(wallLineStart.x, wallLineStart.y, hoveredTile.x, hoveredTile.y);
+    for(const t of path){
+      const valid = canPlaceBuilding('palisade', t.x, t.y);
+      const gs = worldToScreen((t.x+0.5)*CONFIG.TILE, (t.y+0.5)*CONFIG.TILE);
+      ctx.globalAlpha = 0.45;
+      diamondPath(gs.x, gs.y, tw, th);
+      ctx.fillStyle = valid ? '#5a7247' : '#8b3a2f';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = valid ? '#8fae72' : '#c96a5a';
+      ctx.lineWidth = 2;
+      diamondPath(gs.x, gs.y, tw, th);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+
   const valid = canPlaceBuilding(placementMode, hoveredTile.x, hoveredTile.y) &&
                 resources.wood>=def.cost.wood && resources.stone>=def.cost.stone;
   const fpw = def.footprint.w, fph = def.footprint.h;
-  const tw = ISO.TILE_W * camera.zoom, th = ISO.TILE_H * camera.zoom;
 
   // ground-tile outline(s) under the footprint
   ctx.globalAlpha = 0.45;
