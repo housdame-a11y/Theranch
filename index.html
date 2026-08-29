@@ -793,6 +793,27 @@
     background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
   }
   #arrivalModal[hidden]{ display:none; }
+  /* [Phase 12d] council vote modal — same overlay treatment as the
+     others above, but at a deliberately higher z-index (65, not 60):
+     #bottombar (the roster bar/settings row) is *also* z-index:60, and
+     with equal z-index the later DOM element wins the stacking order —
+     #bottombar comes after this modal's markup, so at z-index:60 it
+     would sit on top and eat every click meant for the modal. This is
+     likely latent in assignModal/giftModal/arrivalModal too (all also
+     z-index:60, never previously confirmed clickable through real UI
+     automation rather than direct state manipulation) — worth an
+     audit, but out of scope to silently "fix" here without confirming
+     each one actually has the problem first.
+     Missing entirely was the first version of this bug: with no
+     position/z-index rule at all, #councilModal rendered inline at the
+     bottom of the page instead of as a full-screen overlay. */
+  #councilModal{
+    position:absolute; inset:0; z-index:65;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
+  }
+  #councilModal[hidden]{ display:none; }
   /* [Bugfix] generic confirm modal — replaces window.confirm(), which
      doesn't reliably fire in embedded/sandboxed webviews (e.g. Pydroid's
      browser) and was silently swallowing the Back to Menu click. Same
@@ -1660,6 +1681,23 @@
   </div>
 </div>
 
+<!-- [Phase 12d] the annual council vote — only ever shown when the vote
+     is actually contested (see runCouncilVote()); an uncontested year
+     never opens this at all. No dismiss-without-choosing, same
+     reasoning as arrival/gift above — a contested vote genuinely needs
+     one of the four responses, there's no neutral default that makes
+     sense here either. -->
+<div id="councilModal" hidden>
+  <div class="panel assign-panel">
+    <div class="assign-header">
+      <span class="title">Council Vote — Contested</span>
+    </div>
+    <div class="assign-sub" id="councilBlurb"></div>
+    <div id="councilDetail" style="padding:8px 6px;"></div>
+    <div id="councilResponses" style="display:flex; flex-direction:column; gap:6px; padding:8px 6px 4px;"></div>
+  </div>
+</div>
+
 <!-- [Bugfix] generic yes/no confirm modal — replaces window.confirm(),
      which several embedded/webview contexts (e.g. Pydroid's browser)
      never surface, so the confirm() call resolved as if the player
@@ -1962,6 +2000,8 @@ function onNewDay(derived){
   updateMinisterRecruitment(); // [Phase 12a]
   updateLoyalty(); // [Phase 12b]
   updateChallengerBuildup(); // [Phase 12c]
+  updateCouncil(derived); // [Phase 12d]
+  updatePendingPromises(); // [Phase 12d]
 }
 
 function onSeasonChange(derived){
@@ -2197,7 +2237,7 @@ function createFamily(name, memberIds){
   return {
     id: familyIdCounter++,
     name,
-    prestige: 0, // Phase 12 territory — sits inert here, not wired to anything yet
+    prestige: 0, // real and wired since Phase 11 (marriage) — this comment predates that
     memberIds: memberIds.slice(),
     // [Phase 11] the plan describes "family approval" as a blend of both
     // House heads' views, but no head concept existed anywhere before
@@ -2208,7 +2248,14 @@ function createFamily(name, memberIds){
     // SCHEMA v12: political intensity toward becoming an actual council
     // challenger — see the FACTIONS & CHALLENGER BUILDUP section.
     // [Phase 12c]
-    challengerBuildup: 0
+    challengerBuildup: 0,
+    // SCHEMA v12: per the plan's own Family data-model sketch —
+    // `wealth: 0` and `relations: {}` (familyId -> -100..100). Both sit
+    // real but mostly unmoved until Phase 12d's council responses touch
+    // them (Bribe/Crush/Offer an Office are the only current writers).
+    // [Phase 12d]
+    wealth: 0,
+    relations: {}
   };
 }
 function familyOf(survivor){
@@ -2972,6 +3019,247 @@ function updateChallengerBuildup(){
     const avgLoyalty = living.reduce((sum,s)=>sum+(s.loyaltyToFounder!=null?s.loyaltyToFounder:50),0) / living.length;
     const growth = (Math.min(100,f.prestige)/100) * (1 - avgLoyalty/100) * CHALLENGER_BUILDUP_RATE;
     f.challengerBuildup = Math.max(0, (f.challengerBuildup||0) + growth);
+  }
+}
+
+/* =========================================================
+   === COUNCIL VOTE (Phase 12d) ===
+   "Once a year, the council of Houses votes on whether the leader keeps
+   their seat" — the check itself always runs (see updateCouncil below,
+   fired on every real year boundary), but only pops the actual decision
+   modal when contested; an uncontested year quietly reaffirms the
+   founder with a small Chronicle line, since forcing a four-button
+   decision on a session with no real opposition would just be
+   friction, not choice. Two real design calls made against a plan that
+   was specific about outcomes but not every input, both flagged rather
+   than guessed silently:
+
+   1) "a challenger whose political power is ≥75% of the leader House's"
+      — 12c's challengerBuildup is deliberately exempt for the founder's
+      own House (it can't rival itself, so it's pinned at 0 forever),
+      which would make this comparison trivially true against any
+      nonzero rival if read literally against challengerBuildup on both
+      sides. Read instead as: challenger's buildup vs. the founder's own
+      House *prestige* — a real, nonzero, already-meaningful number for
+      "how established the leader's own standing is." "Enough
+      opposition" (the plan's other, non-challenger trigger) is read as
+      authorityValue() (12b) falling to the bottom "Weak Leader" rung —
+      the council can turn on a leader nobody actually trusts anymore
+      even with no single dominant rival House.
+
+   2) Pending promises: the plan says these "carry real consequences if
+      broken later" but doesn't define what keeping one means. Rather
+      than invent an abstract, unverifiable condition, "Offer an Office"
+      is the only response that creates one, and keeping it is
+      literal and checkable against a system that already exists:
+      appoint someone from the challenger's House to an open ministry
+      (Phase 12a) within the deadline. This is also Honest's first real
+      producer — it sat deliberately inert since 12b specifically
+      because "whether promises are kept" needed an actual promise to
+      exist first. Territory-expansion asks, which the plan also
+      mentions council sessions "can carry," are left out entirely —
+      territory itself is Phase 13 scope, not built yet, so there's
+      nothing real for a territory promise to attach to.
+
+   Political capital is tracked and grows from favorable outcomes, but
+   none of this phase's four responses actually spend it — the plan's
+   own cost table for all four is explicit (free/free/free/40 food+6
+   tools) and never mentions capital, so nothing here invents a spend
+   rule the source material doesn't state. It's real, visible,
+   persisted infrastructure for Phase 12.5's laws to draw down later,
+   same "shape before content" precedent as Honest was until this
+   phase gave it a producer. */
+const COUNCIL_CONTEST_BUILDUP_RATIO = 0.75; // the plan's exact number
+const COUNCIL_CONTEST_WEAK_AUTHORITY = 20;  // the "Weak Leader" rung floor from 12b
+const PROMISE_OFFICE_DEADLINE_DAYS = 60;    // no original number — flagged, same as every other delta this cluster
+let politicalCapital = 50; // the plan's own stated starting value
+let pendingPromises = [];
+let promiseIdCounter = 0;
+let lastCouncilYear = 0;
+let pendingCouncil = null; // { challengerFamilyId } while the decision modal is open, else null
+
+/* The House with the highest challengerBuildup right now, or null if
+   none exists yet (population too young, or nobody's unhappy enough to
+   be building toward anything). */
+function currentChallengerFamily(){
+  const founder = survivors.find(s => s.isFounder);
+  const founderFamilyId = founder ? founder.familyId : null;
+  let best = null;
+  for(const f of families){
+    if(f.id === founderFamilyId) continue;
+    if(!best || (f.challengerBuildup||0) > (best.challengerBuildup||0)) best = f;
+  }
+  return (best && (best.challengerBuildup||0) > 0) ? best : null;
+}
+
+function isCouncilContested(){
+  if(families.length < 2) return false; // the plan's exact "at least two Houses" gate
+  const founder = survivors.find(s => s.isFounder);
+  const founderFamily = founder ? families.find(f => f.id === founder.familyId) : null;
+  const challenger = currentChallengerFamily();
+  const strongRival = !!(challenger && founderFamily &&
+    (challenger.challengerBuildup||0) >= COUNCIL_CONTEST_BUILDUP_RATIO * (founderFamily.prestige||0) &&
+    (founderFamily.prestige||0) > 0);
+  const weakLeader = authorityValue() < COUNCIL_CONTEST_WEAK_AUTHORITY;
+  return strongRival || weakLeader;
+}
+
+function relationsDelta(family, otherFamilyId, delta){
+  family.relations[otherFamilyId] = Math.max(-100, Math.min(100, (family.relations[otherFamilyId]||0) + delta));
+}
+function bumpFamilyRelations(familyA, familyB, delta){
+  relationsDelta(familyA, familyB.id, delta);
+  relationsDelta(familyB, familyA.id, delta);
+}
+function ranchWideLoyalty(delta){
+  for(const s of survivors){
+    if(s.health<=0 || s.isFounder) continue;
+    s.loyaltyToFounder = Math.max(0, Math.min(100, (s.loyaltyToFounder!=null?s.loyaltyToFounder:50) + delta));
+  }
+}
+/* No original formula exists — "outcome scales with the founder's Lead
+   skill" is all the plan states. Flagged, same as every other
+   interpretation this cluster has needed. */
+function councilSuccessChance(){
+  const founder = survivors.find(s => s.isFounder);
+  const lead = founder ? (founder.skills.leadership||0) : 0;
+  return Math.max(0.15, Math.min(0.85, 0.35 + lead*0.03));
+}
+
+/* Called once per real year boundary (see updateCouncil below). Always
+   runs the check; only opens the decision modal if actually contested. */
+function runCouncilVote(){
+  if(!isCouncilContested()){
+    politicalCapital = Math.min(100, politicalCapital + 5);
+    logChronicle('event', 'The council reaffirms your leadership', 'no serious challenge this year');
+    return;
+  }
+  const challenger = currentChallengerFamily();
+  pendingCouncil = { challengerFamilyId: challenger ? challenger.id : null };
+  pauseGame();
+  renderCouncilModal();
+  document.getElementById('councilModal').hidden = false;
+}
+
+/* The four responses, exact numbers from the plan. Deterministic ones
+   (Bribe, Offer an Office) always succeed as stated; Speech and Crush
+   roll against councilSuccessChance(). */
+function resolveCouncilResponse(kind){
+  const founder = survivors.find(s => s.isFounder);
+  const founderFamily = founder ? families.find(f => f.id === founder.familyId) : null;
+  const challenger = pendingCouncil ? families.find(f => f.id === pendingCouncil.challengerFamilyId) : null;
+  if(!founderFamily){ closeCouncilModal(); return; }
+
+  if(kind === 'speech'){
+    const success = Math.random() < councilSuccessChance();
+    if(success){
+      founderFamily.prestige = Math.max(0, founderFamily.prestige + 8);
+      ranchWideLoyalty(6);
+      bumpReputation('honest', 4);
+      flashAlert('The speech lands — the council stands behind you.');
+      logChronicle('event', 'Council Vote: Speech succeeds', `+8 prestige, +6 ranch loyalty`);
+    } else {
+      founderFamily.prestige = Math.max(0, founderFamily.prestige - 8);
+      ranchWideLoyalty(-10);
+      if(challenger) challenger.prestige = Math.max(0, challenger.prestige + 6);
+      flashAlert('The speech falls flat.');
+      logChronicle('event', 'Council Vote: Speech fails', `-8 prestige, -10 ranch loyalty`);
+    }
+  } else if(kind === 'bribe'){
+    if(resources.food < 40 || resources.tools < 6){
+      flashAlert('Not enough food and tools to bribe the council.');
+      return;
+    }
+    resources.food -= 40; resources.tools -= 6;
+    updateResourceBar();
+    if(challenger) challenger.wealth = (challenger.wealth||0) + 6;
+    founderFamily.prestige = Math.max(0, founderFamily.prestige - 4);
+    bumpReputation('ruthless', 5);
+    bumpReputation('honest', -3);
+    flashAlert('The vote is secured — quietly.');
+    logChronicle('event', 'Council Vote: Bribe', `vote secured, -4 prestige`);
+  } else if(kind === 'office'){
+    if(challenger){
+      challenger.prestige = Math.max(0, challenger.prestige + 12);
+      bumpFamilyRelations(founderFamily, challenger, 20);
+    }
+    founderFamily.prestige = Math.max(0, founderFamily.prestige + 2);
+    ranchWideLoyalty(6);
+    if(challenger){
+      pendingPromises.push({
+        id: promiseIdCounter++,
+        type: 'office',
+        toFamilyId: challenger.id,
+        dueDay: time.totalDays + PROMISE_OFFICE_DEADLINE_DAYS,
+        resolved: false
+      });
+    }
+    flashAlert('The challenger is offered a real seat at the table.');
+    logChronicle('event', 'Council Vote: Offer an Office', `threat removed — a promise is now owed`);
+  } else if(kind === 'crush'){
+    const success = Math.random() < councilSuccessChance();
+    if(success){
+      if(challenger){
+        challenger.prestige = Math.max(0, challenger.prestige - 25);
+        challenger.wealth = Math.max(0, (challenger.wealth||0) - 10);
+        bumpFamilyRelations(founderFamily, challenger, -40);
+        challenger.challengerBuildup = 0;
+      }
+      ranchWideLoyalty(-8);
+      bumpReputation('ruthless', 10);
+      bumpReputation('compassionate', -5);
+      flashAlert('The challenger is crushed. The ranch fears you now.');
+      logChronicle('event', 'Council Vote: Crush the Challenger succeeds', `challenger broken, -8 ranch loyalty`);
+    } else {
+      founderFamily.prestige = Math.max(0, founderFamily.prestige - 18);
+      if(challenger) challenger.prestige = Math.max(0, challenger.prestige + 15);
+      ranchWideLoyalty(-15);
+      flashAlert('The attempt to crush the challenger backfires.');
+      logChronicle('event', 'Council Vote: Crush the Challenger fails', `-18 prestige, -15 ranch loyalty`);
+    }
+  }
+  closeCouncilModal();
+}
+
+function closeCouncilModal(){
+  pendingCouncil = null;
+  document.getElementById('councilModal').hidden = true;
+  resumeGame();
+}
+
+/* Daily — checks every unresolved promise against its real deadline. An
+   'office' promise is kept if the challenger's House currently holds any
+   ministry; broken otherwise. This is Honest's first real producer. */
+function updatePendingPromises(){
+  for(const p of pendingPromises){
+    if(p.resolved || time.totalDays < p.dueDay) continue;
+    p.resolved = true;
+    const family = families.find(f => f.id === p.toFamilyId);
+    if(p.type === 'office'){
+      const kept = family && ministers.some(m => {
+        const s = survivors.find(x => x.id === m.survivorId);
+        return s && s.familyId === family.id;
+      });
+      if(kept){
+        bumpReputation('honest', 8);
+        if(family) bumpFamilyRelations(families.find(f=>f.id===survivors.find(s=>s.isFounder).familyId), family, 10);
+        logChronicle('event', 'A promise is kept', `${family ? family.name : 'a House'} was given real influence, as promised`);
+      } else {
+        bumpReputation('honest', -12);
+        if(family) family.challengerBuildup = (family.challengerBuildup||0) + 10;
+        if(family) bumpFamilyRelations(families.find(f=>f.id===survivors.find(s=>s.isFounder).familyId), family, -20);
+        logChronicle('event', 'A promise is broken', `${family ? family.name : 'a House'} was promised influence and never got it`);
+      }
+    }
+  }
+}
+
+/* Fires exactly once per real year boundary, regardless of which
+   season/day crosses it — called from onNewDay below. */
+function updateCouncil(derived){
+  if(derived.year > lastCouncilYear){
+    lastCouncilYear = derived.year;
+    if(families.length) runCouncilVote();
   }
 }
 
@@ -4962,6 +5250,37 @@ document.getElementById('terrainCloseBtn').addEventListener('click', ()=>{
    ========================================================= */
 document.getElementById('arrivalAcceptBtn').addEventListener('click', () => resolveArrival(true));
 document.getElementById('arrivalRejectBtn').addEventListener('click', () => resolveArrival(false));
+
+/* =========================================================
+   === COUNCIL MODAL (Phase 12d) ===
+   ========================================================= */
+const COUNCIL_RESPONSE_INFO = [
+  { kind:'speech', label:'Speech', cost:'free', desc:'Rally the council directly. Scales with your Lead skill — success or backfire, no middle ground.' },
+  { kind:'bribe', label:'Bribe', cost:'40 food + 6 tools', desc:'Buy the vote outright. Always works, but it\'s not a secret forever.' },
+  { kind:'office', label:'Offer an Office', cost:'free', desc:'Give the challenger real influence. Removes the threat now — but it\'s a promise, and promises get checked.' },
+  { kind:'crush', label:'Crush the Challenger', cost:'free, high variance', desc:'Break them outright. Scales with your Lead skill. Feared, not loved, either way.' }
+];
+function renderCouncilModal(){
+  const founder = survivors.find(s => s.isFounder);
+  const founderFamily = founder ? families.find(f => f.id === founder.familyId) : null;
+  const challenger = pendingCouncil ? families.find(f => f.id === pendingCouncil.challengerFamilyId) : null;
+  document.getElementById('councilBlurb').textContent = challenger
+    ? `${challenger.name} is contesting your leadership this year.`
+    : `Enough of the ranch has soured on your leadership for this to be contested.`;
+  document.getElementById('councilDetail').innerHTML = `
+    <div class="row">your House: ${founderFamily ? founderFamily.name : '—'} · prestige ${founderFamily ? Math.round(founderFamily.prestige) : 0}</div>
+    ${challenger ? `<div class="row">${challenger.name} · prestige ${Math.round(challenger.prestige)} · buildup ${Math.round(challenger.challengerBuildup||0)}</div>` : ''}
+    <div class="row">authority: ${authorityRank(authorityValue())} (${Math.round(authorityValue())})</div>
+  `;
+  document.getElementById('councilResponses').innerHTML = COUNCIL_RESPONSE_INFO.map(r => `
+    <button class="mini-btn secondary council-response-btn" data-kind="${r.kind}" style="text-align:left; white-space:normal;">
+      <strong>${r.label}</strong> — ${r.cost}<br><span style="font-weight:400; opacity:0.85; font-size:0.9em;">${r.desc}</span>
+    </button>
+  `).join('');
+  document.querySelectorAll('.council-response-btn').forEach(btn => {
+    btn.addEventListener('click', () => resolveCouncilResponse(btn.dataset.kind));
+  });
+}
 
 /* =========================================================
    === ASSIGN PICKER: the Phase 5 rework's actual mechanic ===
@@ -7139,6 +7458,18 @@ function renderSurvivorPanel(c){
       <div class="section-label">Reputation${title ? ` — ${title}` : ''}</div>
       ${repBarsHtml}
     `;
+    // [Phase 12d] political capital + any pending promises — same
+    // founder-only scope as Authority/Reputation above.
+    const openPromises = pendingPromises.filter(p => !p.resolved);
+    authorityHtml += `
+      <div class="section-label">Council</div>
+      <div class="row">political capital: ${Math.round(politicalCapital)}</div>
+      ${openPromises.length ? openPromises.map(p => {
+        const fam = families.find(f => f.id === p.toFamilyId);
+        const daysLeft = Math.max(0, p.dueDay - time.totalDays);
+        return `<div class="row" style="font-style:italic; opacity:0.85;">owed to ${fam ? fam.name : 'a House'}: real influence — ${daysLeft} day${daysLeft===1?'':'s'} left</div>`;
+      }).join('') : ''}
+    `;
   }
 
   // [Phase 12c] every survivor, not just the founder — an ordinary
@@ -9073,6 +9404,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // SCHEMA v12: Authority & Reputation's real, persistent state — the
     // five reputation axes. [Phase 12b]
     reputation,
+    // SCHEMA v12: Council Vote state — political capital, pending
+    // promises, and the year-boundary tracker so a save/load can't be
+    // used to dodge or replay a council check. [Phase 12d]
+    politicalCapital, pendingPromises, lastCouncilYear,
     buildings: buildings.map(b => ({
       id: b.id, type: b.type, tx: b.tx, ty: b.ty,
       isComplete: b.isComplete, workRequired: b.workRequired, workDone: b.workDone,
@@ -9113,7 +9448,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     })),
     // SCHEMA v9: the Families stub and full livestock state — see the
     // Families/Animals/Livestock Requests sections above. [Phase 9]
-    families: families.map(f => ({ id:f.id, name:f.name, prestige:f.prestige, memberIds:f.memberIds, headId:f.headId, challengerBuildup:f.challengerBuildup })),
+    families: families.map(f => ({ id:f.id, name:f.name, prestige:f.prestige, memberIds:f.memberIds, headId:f.headId, challengerBuildup:f.challengerBuildup, wealth:f.wealth, relations:f.relations })),
     // SCHEMA v11: relationships (Map -> array for JSON) and marriage
     // proposals — real, persistent world state. pendingTalk is NOT
     // included (transient, same reasoning as pendingArrival/pendingIncursion
@@ -9294,6 +9629,17 @@ async function performLoad(){
     // at declaration, same fallback shape as ministers/ministerRequests
     // below. [Phase 12b]
     if(state.reputation) reputation = { ...reputation, ...state.reputation };
+    // SCHEMA v12: pre-Phase-12d saves have none of these — fall back to
+    // the fresh defaults already assigned at declaration (capital 50,
+    // no promises, year 0 so the very next year boundary still fires a
+    // real check rather than silently skipping the player's first
+    // year). [Phase 12d]
+    politicalCapital = state.politicalCapital != null ? state.politicalCapital : 50;
+    pendingPromises.length = 0;
+    if(state.pendingPromises) for(const pd of state.pendingPromises) pendingPromises.push({ ...pd });
+    promiseIdCounter = pendingPromises.length ? Math.max(...pendingPromises.map(p=>p.id))+1 : 0;
+    lastCouncilYear = state.lastCouncilYear != null ? state.lastCouncilYear : 0;
+    pendingCouncil = null; // never persisted — a contested vote mid-save just re-fires cleanly next year rather than restoring a modal without its context
     pendingArrival = null;
     buildings.length = 0;
     buildingGrid.clear();
@@ -9378,7 +9724,7 @@ async function performLoad(){
     // player re-founds; livestock-panel requests simply show nothing
     // pending, no crash). [Phase 9]
     families.length = 0;
-    if(state.families) for(const fd of state.families) families.push({ id:fd.id, name:fd.name, prestige:fd.prestige||0, memberIds:fd.memberIds||[], headId: fd.headId != null ? fd.headId : (fd.memberIds && fd.memberIds.length ? fd.memberIds[0] : null), challengerBuildup: fd.challengerBuildup||0 });
+    if(state.families) for(const fd of state.families) families.push({ id:fd.id, name:fd.name, prestige:fd.prestige||0, memberIds:fd.memberIds||[], headId: fd.headId != null ? fd.headId : (fd.memberIds && fd.memberIds.length ? fd.memberIds[0] : null), challengerBuildup: fd.challengerBuildup||0, wealth: fd.wealth||0, relations: fd.relations||{} });
     familyIdCounter = families.length ? Math.max(...families.map(f=>f.id))+1 : 0;
 
     // SCHEMA v11: pre-Phase-11 saves have neither field — falls back to
