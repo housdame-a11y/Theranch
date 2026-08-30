@@ -916,6 +916,34 @@
   }
   #ministersToggleBtn svg{ width:19px; height:19px; display:block; }
   #ministersToggleBtn:active{ transform:translateY(1px); }
+  /* [Phase 12.5] Laws panel — same shape as Ministers above. */
+  #lawsbar{
+    position:relative;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #lawsbar[hidden]{ display:none; }
+  #lawsToggleBtn{
+    width:35px; height:35px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:50%;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #lawsToggleBtn svg{ width:19px; height:19px; display:block; }
+  #lawsToggleBtn:active{ transform:translateY(1px); }
+  #lawsmenu{
+    position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 620px);
+    max-height:calc(var(--local-vh, 100vh) * 0.65);
+    overflow:auto;
+  }
+  #lawsmenu[hidden]{ display:none; }
+  .law-domain-card{
+    padding:8px 6px; border-bottom:1px solid rgba(43,29,20,0.15);
+    font-family:'EB Garamond', serif; font-size:12.5px;
+  }
+  .law-domain-card:last-child{ border-bottom:none; }
   #ministersmenu{
     position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
     /* [Wider panels pass] bumped from 420px/0.88 to 620px/0.92, and the
@@ -1769,6 +1797,20 @@
         </svg>
       </button>
       <div id="ministersmenu" class="panel" hidden></div>
+    </div>
+    <!-- [Phase 12.5] -->
+    <div id="lawsbar" hidden>
+      <button id="lawsToggleBtn" class="panel toggle-btn" aria-label="Laws" title="Laws">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <!-- Simple scroll/tablet glyph, flat line-art filled with
+               var(--ink) — same visual style as the other icons. -->
+          <rect x="20" y="15" width="60" height="70" rx="4" fill="var(--ink)"/>
+          <rect x="30" y="28" width="40" height="6" fill="var(--parchment)"/>
+          <rect x="30" y="42" width="40" height="6" fill="var(--parchment)"/>
+          <rect x="30" y="56" width="26" height="6" fill="var(--parchment)"/>
+        </svg>
+      </button>
+      <div id="lawsmenu" class="panel" hidden></div>
     </div>
     <div id="buildbar" hidden>
       <button id="buildToggleBtn" class="panel toggle-btn" aria-label="Build" title="Build">
@@ -3263,6 +3305,157 @@ function updateCouncil(derived){
   }
 }
 
+/* =========================================================
+   === LAWS & GOVERNANCE (Phase 12.5) ===
+   "A real mutually-exclusive-per-domain system — 47 laws across 13
+   domains in the original, worth matching the shape of even if the
+   exact count differs here." The plan gives exact stances for four
+   domains (leadership, succession, marriage, immigration) — those are
+   ported verbatim. The other nine (housing, farmland, justice for
+   theft, justice for bloodshed, trade, military service, taxation,
+   emergencies, exploration rights) are named but never detailed, so
+   their stances and every faction-sentiment mapping below is this
+   build's own design, not a verified port — flagged plainly rather
+   than presented as sourced, same discipline as every other
+   underspecified corner across 12a-12d. Each domain still gets a real
+   3-4-stance mutually-exclusive choice, matching the *shape* the plan
+   asks for even where the specific content had to be invented.
+
+   One law can hold each domain at a time — enacting a new one silently
+   replaces whatever held that domain before (no separate "repeal"
+   action needed, matching "enacting one law in a domain implicitly
+   repeals whichever law held that domain before"). Laws become
+   enactable once LAW_HOUSE_THRESHOLD Houses exist (the plan's own exact
+   number, kept rather than invented) — until then the panel is visible
+   but shows the count-down honestly rather than hiding the whole
+   system, consistent with how every other governance panel in this
+   project (Ministers, Dynasty) stays visible from founding regardless
+   of how useful it is yet.
+
+   Faction sentiment (five 0-100 values, one per 12c faction, starting
+   neutral at 50) is real, persisted, and genuinely shifted by every
+   enactment — but like political capital in 12d, nothing downstream
+   *reads* it yet. The plan's own claim for this phase is just "shifts
+   faction sentiment measurably," not what consumes it — that's real
+   infrastructure for whatever later phase spends it, not an invented
+   consumer bolted on here to make it feel more finished than the
+   source material actually specifies. */
+const LAW_HOUSE_THRESHOLD = 10; // the plan's own exact trigger number
+const LAW_DOMAINS = [
+  'leadership','succession','marriage','immigration','housing','farmland',
+  'justiceTheft','justiceBloodshed','trade','militaryService','taxation',
+  'emergencies','exploration'
+];
+const LAW_DOMAIN_LABEL = {
+  leadership:'Leadership', succession:'Succession', marriage:'Marriage', immigration:'Immigration',
+  housing:'Housing', farmland:'Farmland', justiceTheft:'Justice — Theft', justiceBloodshed:'Justice — Bloodshed',
+  trade:'Trade', militaryService:'Military Service', taxation:'Taxation', emergencies:'Emergencies',
+  exploration:'Exploration Rights'
+};
+const LAWS = {
+  // --- the four domains the plan details explicitly ---
+  leadership: [
+    { id:'absoluteRule', name:'Absolute Rule', desc:'The founder decides alone.', likes:['traditionalists','hawks'], hates:['reformists'] },
+    { id:'advisoryCouncil', name:'Advisory Council', desc:'Houses advise; the founder still decides.', likes:['commons','merchants'], hates:[] },
+    { id:'sharedGovernance', name:'Shared Governance', desc:'Major decisions need House buy-in.', likes:['reformists','merchants'], hates:['hawks'] },
+    { id:'councilDominance', name:'Council Dominance', desc:'The council of Houses holds real power.', likes:['reformists'], hates:['traditionalists','hawks'] }
+  ],
+  succession: [
+    { id:'eldest', name:'Eldest Inherits', desc:'The eldest heir takes the seat.', likes:['traditionalists'], hates:['reformists'] },
+    { id:'prestigeBased', name:'Prestige-Based', desc:'Whoever\'s House carries the most prestige.', likes:['merchants','hawks'], hates:['commons'] },
+    { id:'familyElection', name:'Family Election', desc:'The Houses vote on a successor.', likes:['reformists','commons'], hates:['traditionalists'] },
+    { id:'founderDesignates', name:'Founder Designates', desc:'The current founder names their own heir.', likes:['hawks'], hates:['reformists'] }
+  ],
+  marriage: [
+    { id:'freeMarriage', name:'Free Marriage', desc:'Survivors choose their own partners.', likes:['reformists','commons'], hates:['traditionalists'] },
+    { id:'headConsent', name:'Head Consent', desc:'A House head must approve the match.', likes:['traditionalists'], hates:['reformists'] },
+    { id:'founderArranged', name:'Founder-Arranged', desc:'The founder arranges marriages directly.', likes:['hawks'], hates:['commons','reformists'] },
+    { id:'prestigeDriven', name:'Prestige-Driven', desc:'Matches are brokered for House advantage.', likes:['merchants'], hates:['commons'] }
+  ],
+  immigration: [
+    { id:'openSettlement', name:'Open Settlement', desc:'Anyone who arrives is welcome.', likes:['commons','reformists'], hates:['hawks'] },
+    { id:'selectiveAdmission', name:'Selective Admission', desc:'Arrivals are vetted case by case.', likes:['traditionalists'], hates:[] },
+    { id:'skillsFirst', name:'Skills-First', desc:'Priority goes to whoever\'s useful.', likes:['merchants'], hates:['commons'] },
+    { id:'closedBorder', name:'Closed Border', desc:'No new arrivals are accepted.', likes:['hawks'], hates:['reformists','commons'] }
+  ],
+  // --- the remaining nine domains: named by the plan, not detailed —
+  // this build's own stances, flagged in the section comment above ---
+  housing: [
+    { id:'openHousing', name:'Open Housing', desc:'First come, first housed.', likes:['commons'], hates:[] },
+    { id:'seniorityBased', name:'Seniority-Based', desc:'Longest-tenured settlers get priority.', likes:['traditionalists'], hates:['reformists'] },
+    { id:'meritBased', name:'Merit-Based', desc:'Contribution decides who gets what.', likes:['merchants','hawks'], hates:['commons'] },
+    { id:'familyFirst', name:'Family-First', desc:'Family units are housed together, prioritized.', likes:['commons','traditionalists'], hates:[] }
+  ],
+  farmland: [
+    { id:'communalFarming', name:'Communal Farming', desc:'All yield is pooled and shared.', likes:['commons','reformists'], hates:['merchants'] },
+    { id:'privatePlots', name:'Private Plots', desc:'Families keep what their own plot yields.', likes:['merchants','traditionalists'], hates:['commons'] },
+    { id:'assignedQuotas', name:'Assigned Quotas', desc:'The founder assigns who farms what.', likes:['hawks'], hates:['reformists'] },
+    { id:'cooperativeShares', name:'Cooperative Shares', desc:'Yield splits by labor contributed.', likes:['reformists'], hates:['traditionalists'] }
+  ],
+  justiceTheft: [
+    { id:'exile', name:'Exile', desc:'Thieves are cast out.', likes:['hawks'], hates:['commons'] },
+    { id:'restitution', name:'Restitution', desc:'Pay back what was taken — no further punishment.', likes:['commons','merchants'], hates:['hawks'] },
+    { id:'laborSentence', name:'Labor Sentence', desc:'A forced work detail settles the debt.', likes:['traditionalists'], hates:[] },
+    { id:'foundersDiscretion', name:'Founder\'s Discretion', desc:'Judged case by case, no fixed rule.', likes:[], hates:['reformists'] }
+  ],
+  justiceBloodshed: [
+    { id:'bloodForBlood', name:'Blood for Blood', desc:'Killing is answered with exile or execution.', likes:['hawks','traditionalists'], hates:['commons','reformists'] },
+    { id:'trialByCouncil', name:'Trial by Council', desc:'A hearing decides the outcome.', likes:['reformists'], hates:['hawks'] },
+    { id:'exileOnly', name:'Exile Only', desc:'Banishment, never execution.', likes:['commons'], hates:['hawks'] },
+    { id:'foundersJudgment', name:'Founder\'s Judgment', desc:'Judged case by case by the founder alone.', likes:['hawks'], hates:['reformists'] }
+  ],
+  trade: [
+    { id:'openTrade', name:'Open Trade', desc:'Anyone can trade freely.', likes:['merchants','reformists'], hates:['traditionalists'] },
+    { id:'founderControlled', name:'Founder-Controlled', desc:'All trade routes through the founder.', likes:['hawks'], hates:['merchants'] },
+    { id:'guildRegulated', name:'Guild-Regulated', desc:'A merchant body regulates trade.', likes:['merchants'], hates:['commons'] },
+    { id:'closedTrade', name:'Closed Trade', desc:'No outside trade at all.', likes:['traditionalists'], hates:['merchants'] }
+  ],
+  militaryService: [
+    { id:'volunteerMilitia', name:'Volunteer Militia', desc:'Guards serve by choice only.', likes:['commons','reformists'], hates:['hawks'] },
+    { id:'conscription', name:'Conscription', desc:'The founder can compel military service.', likes:['hawks'], hates:['commons','reformists'] },
+    { id:'professionalGuard', name:'Professional Guard', desc:'A dedicated, paid guard role only.', likes:['merchants'], hates:[] },
+    { id:'noStandingForce', name:'No Standing Force', desc:'Defense is ad hoc — no dedicated role.', likes:['reformists'], hates:['hawks'] }
+  ],
+  taxation: [
+    { id:'noTaxation', name:'No Taxation', desc:'No resource levy at all.', likes:['commons','merchants'], hates:['traditionalists'] },
+    { id:'flatTithe', name:'Flat Tithe', desc:'Every House contributes a fixed share.', likes:['traditionalists'], hates:['commons'] },
+    { id:'prestigeBasedTax', name:'Prestige-Based', desc:'Wealthier, higher-prestige Houses pay more.', likes:['reformists'], hates:['merchants'] },
+    { id:'laborTax', name:'Labor Tax', desc:'Contribute work instead of goods.', likes:['commons'], hates:['merchants'] }
+  ],
+  emergencies: [
+    { id:'founderAbsolutePowers', name:'Founder\'s Absolute Powers', desc:'The founder can override any law temporarily.', likes:['hawks'], hates:['reformists'] },
+    { id:'councilApprovedPowers', name:'Council-Approved Powers', desc:'Emergency powers need council sign-off.', likes:['reformists'], hates:['hawks'] },
+    { id:'noSpecialPowers', name:'No Special Powers', desc:'Normal rules always apply, even in a crisis.', likes:['traditionalists'], hates:[] },
+    { id:'mutualAid', name:'Mutual Aid', desc:'Houses self-organize response, no central authority.', likes:['commons'], hates:['hawks'] }
+  ],
+  exploration: [
+    { id:'openExploration', name:'Open Exploration', desc:'Anyone can scout or explore freely.', likes:['reformists','commons'], hates:['hawks'] },
+    { id:'founderSanctioned', name:'Founder-Sanctioned', desc:'Expeditions need the founder\'s approval.', likes:['hawks'], hates:['reformists'] },
+    { id:'houseSponsored', name:'House-Sponsored', desc:'A House can fund and lead its own expedition.', likes:['merchants'], hates:[] },
+    { id:'noExploration', name:'No Exploration', desc:'Territory stays fixed — no scouting at all.', likes:['traditionalists'], hates:['merchants','reformists'] }
+  ]
+};
+let enactedLaws = {}; // domainId -> lawId, absent/undefined = not yet enacted
+let factionSentiment = { traditionalists:50, reformists:50, hawks:50, merchants:50, commons:50 };
+// No original numbers exist for how strongly a law should move sentiment
+// — flagged, same as every other delta introduced across this cluster.
+const LAW_SENTIMENT_LIKE = 8, LAW_SENTIMENT_HATE = -8;
+
+function lawsEnactable(){ return families.length >= LAW_HOUSE_THRESHOLD; }
+
+function enactLaw(domainId, lawId){
+  if(!lawsEnactable()) return false;
+  const law = (LAWS[domainId]||[]).find(l => l.id === lawId);
+  if(!law) return false;
+  const previous = enactedLaws[domainId];
+  enactedLaws[domainId] = lawId;
+  for(const f of law.likes) factionSentiment[f] = Math.max(0, Math.min(100, factionSentiment[f] + LAW_SENTIMENT_LIKE));
+  for(const f of law.hates) factionSentiment[f] = Math.max(0, Math.min(100, factionSentiment[f] + LAW_SENTIMENT_HATE));
+  const prevLaw = previous ? (LAWS[domainId]||[]).find(l=>l.id===previous) : null;
+  logChronicle('event', `Law enacted: ${law.name}`, `${LAW_DOMAIN_LABEL[domainId]}${prevLaw ? ` — replaces ${prevLaw.name}` : ''}`);
+  return true;
+}
+
 /* SCHEMA v6: resources widened to the full ResourceKind set the original
    ever had, per GAME_PLAN's Phase 6 catalog — fiber/tools/eggs/milk/wool
    added as real (if currently mostly-idle) fields rather than invented
@@ -4653,7 +4846,7 @@ function flashBuildStatus(msg){
    in the group before flipping its own. Kept as one shared list (rather
    than repeating the six ids inline six times) so a future seventh panel
    only has to be added here once. */
-const TOGGLE_MENU_IDS = ['buildmenu','jobsmenu','livestockmenu','chroniclemenu','dynastymenu','ministersmenu'];
+const TOGGLE_MENU_IDS = ['buildmenu','jobsmenu','livestockmenu','chroniclemenu','dynastymenu','ministersmenu','lawsmenu'];
 function closeOtherMenus(exceptId){
   for(const id of TOGGLE_MENU_IDS){
     if(id === exceptId) continue;
@@ -4905,6 +5098,71 @@ document.getElementById('ministersToggleBtn').addEventListener('click', ()=>{
   closeOtherMenus('ministersmenu');
   menu.hidden = !opening;
   if(!menu.hidden) renderMinistersPanel();
+});
+
+/* =========================================================
+   === LAWS PANEL (Phase 12.5) ===
+   Visible from founding, same philosophy as Ministers/Dynasty — shows
+   an honest countdown rather than staying hidden until unlocked.
+   ========================================================= */
+function renderLawsPanel(){
+  const menu = document.getElementById('lawsmenu');
+  if(!lawsEnactable()){
+    menu.innerHTML = `
+      <div class="law-domain-card">
+        <div class="minister-title">Laws — not yet enactable</div>
+        <div class="minister-meta">the council of Houses needs ${LAW_HOUSE_THRESHOLD} Houses settled before real law can be made — currently ${families.length}</div>
+      </div>
+    `;
+    return;
+  }
+  const sentimentHtml = FACTIONS.map(f => `
+    <div class="bar-row">
+      <span class="bar-label">${f}</span>
+      <span class="bar-track"><span class="bar-fill skill" style="width:${factionSentiment[f]}%"></span></span>
+    </div>
+  `).join('');
+  const domainsHtml = LAW_DOMAINS.map(domainId => {
+    const currentId = enactedLaws[domainId];
+    const options = (LAWS[domainId]||[]).map(l => `<option value="${l.id}" ${l.id===currentId?'selected':''}>${l.name}</option>`).join('');
+    const current = currentId ? (LAWS[domainId]||[]).find(l=>l.id===currentId) : null;
+    return `
+      <div class="law-domain-card">
+        <div class="minister-title">${LAW_DOMAIN_LABEL[domainId]}</div>
+        <div class="minister-meta">${current ? `${current.name} — ${current.desc}` : 'no law enacted yet'}</div>
+        <div class="minister-actions">
+          <select class="law-select" data-domain="${domainId}">
+            <option value="" ${currentId?'':'selected'} disabled>choose a stance</option>
+            ${options}
+          </select>
+          <button class="mini-btn law-enact-btn" data-domain="${domainId}">Enact</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  menu.innerHTML = `
+    <div class="law-domain-card">
+      <div class="minister-title">Faction Sentiment</div>
+      ${sentimentHtml}
+    </div>
+    ${domainsHtml}
+  `;
+  menu.querySelectorAll('.law-enact-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const domainId = btn.dataset.domain;
+      const select = menu.querySelector(`.law-select[data-domain="${domainId}"]`);
+      if(!select || !select.value) return;
+      enactLaw(domainId, select.value);
+      renderLawsPanel();
+    });
+  });
+}
+document.getElementById('lawsToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('lawsmenu');
+  const opening = menu.hidden;
+  closeOtherMenus('lawsmenu');
+  menu.hidden = !opening;
+  if(!menu.hidden) renderLawsPanel();
 });
 
 /* =========================================================
@@ -5172,7 +5430,7 @@ document.getElementById('dynastyToggleBtn').addEventListener('click', ()=>{
    the title/logo, and the resources HUD (nested inside #titlebar) the
    same way the existing Back to Menu flow already does — rather than
    relying on the overlay's opacity alone — and restores them on close. */
-const UI_CHROME_HIDE_IDS = ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','zoomcontrols','titlebar','settingsbar'];
+const UI_CHROME_HIDE_IDS = ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','zoomcontrols','titlebar','settingsbar'];
 const settingsMenu = document.getElementById('settingsmenu');
 function openSettingsMenu(){
   settingsMenu.removeAttribute('hidden');
@@ -6309,7 +6567,7 @@ foundBtn.addEventListener('click', () => {
   // bottom-left slot next to the roster. Its visibility is entirely
   // selection-driven now (see syncBottomLeftPanel()) — it manages its
   // own hidden attribute and never needs a manual reveal.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -6317,6 +6575,14 @@ foundBtn.addEventListener('click', () => {
   time.elapsed = 0;
   Object.assign(time, deriveTime(time.elapsed));
   foodHistory.length = 0;
+  // [Requested feature] seed the arrival-guarantee clock at founding,
+  // not at module load — lastArrivalDay's declared default (-999)
+  // reads as "practically infinite days since the last one" from day
+  // 1, which would force the guarantee on the very first eligible day
+  // (day 2) of every single game, defeating its own purpose as a
+  // dry-spell safety net rather than a starting-line guarantee. Caught
+  // via a direct test before this ever reached a real player.
+  lastArrivalDay = time.totalDays;
 });
 
 renderFounderBgGrid();
@@ -6426,7 +6692,7 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
   closeSettingsMenu();
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
@@ -7950,12 +8216,37 @@ const EVENT_DEFINITIONS = [
   { id:'goodHarvest', weight:2, minDay:5, run: runGoodHarvestEvent },
   { id:'diseaseOutbreak', weight:2, minDay:8, run: runDiseaseOutbreakEvent },
   { id:'scavengingOpportunity', weight:2, minDay:3, condition: hasRuinTileNearby, run: runScavengingEvent },
-  { id:'arrival', weight:4, minDay:2, run: runArrivalEvent }
+  // [Requested tuning] weight 4 -> 5 ("raise it a little"): moves
+  // arrival's share of the weighted pool from 4/13 (~31%) to 5/14
+  // (~36%) — a modest nudge, not a rebalance, per the request.
+  { id:'arrival', weight:5, minDay:2, run: runArrivalEvent }
 ];
+// [Requested feature] a hard ceiling so a real player can't just get
+// unlucky into a long dry spell: tracked separately from lastEventDay
+// (the shared any-event cooldown above) because this needs to measure
+// "days since an *arrival* specifically", not days since any event —
+// a run of disease outbreaks and trade caravans shouldn't reset this
+// clock. Confirmed by simulation this was a real gap, not a guess: 24
+// independent playthroughs never went below 2 arrivals in 24 days, but
+// one real player's actual save hit 1 in 24+ — rare, not impossible,
+// and exactly the kind of unlucky tail this exists to cut off.
+const ARRIVAL_GUARANTEE_DAYS = 15;
+let lastArrivalDay = -999;
 
 function updateEventEngine(derived){
   if(!founded) return;
   if(pendingArrival) return; // don't stack a new prompt on an unresolved one
+  // [Requested feature] the guarantee floor — checked before the normal
+  // roll below and bypasses it entirely (both the 35%/day chance and the
+  // shared 2-day cooldown) once it's been ARRIVAL_GUARANTEE_DAYS since
+  // the last one. Still respects arrival's own minDay (2) via the same
+  // eligibility check the weighted pool uses.
+  if(derived.totalDays - lastArrivalDay >= ARRIVAL_GUARANTEE_DAYS && derived.totalDays >= 2){
+    runArrivalEvent();
+    lastArrivalDay = derived.totalDays;
+    lastEventDay = derived.totalDays;
+    return;
+  }
   if(derived.totalDays - lastEventDay < MIN_DAYS_BETWEEN_EVENTS) return;
   if(survivorRng() > EVENT_CHECK_CHANCE_PER_DAY) return;
   const candidates = EVENT_DEFINITIONS.filter(e => derived.totalDays >= e.minDay && (!e.condition || e.condition()));
@@ -7964,7 +8255,12 @@ function updateEventEngine(derived){
   let roll = survivorRng()*totalWeight;
   for(const e of candidates){
     roll -= e.weight;
-    if(roll <= 0){ e.run(); lastEventDay = derived.totalDays; break; }
+    if(roll <= 0){
+      e.run();
+      lastEventDay = derived.totalDays;
+      if(e.id === 'arrival') lastArrivalDay = derived.totalDays;
+      break;
+    }
   }
 }
 
@@ -7976,6 +8272,7 @@ window.__debugForceEvent = function(eventId){
   if(!e) return false;
   e.run();
   lastEventDay = time.totalDays;
+  if(e.id === 'arrival') lastArrivalDay = time.totalDays;
   return true;
 };
 
@@ -9401,6 +9698,10 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // used to bypass the between-events cooldown. [Phase 10]
     chronicle: chronicle.map(e => ({ id:e.id, category:e.category, title:e.title, detail:e.detail, day:e.day, year:e.year, season:e.season })),
     arrivalsAccepted, arrivalsRejected, lastEventDay,
+    // [Requested feature] the arrival-guarantee floor's own tracker —
+    // persisted separately from lastEventDay so a save/load can't be
+    // used to dodge or reset the dry-spell clock.
+    lastArrivalDay,
     // SCHEMA v12: Authority & Reputation's real, persistent state — the
     // five reputation axes. [Phase 12b]
     reputation,
@@ -9408,6 +9709,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // promises, and the year-boundary tracker so a save/load can't be
     // used to dodge or replay a council check. [Phase 12d]
     politicalCapital, pendingPromises, lastCouncilYear,
+    // SCHEMA v12: Laws & Governance state. [Phase 12.5]
+    enactedLaws, factionSentiment,
     buildings: buildings.map(b => ({
       id: b.id, type: b.type, tx: b.tx, ty: b.ty,
       isComplete: b.isComplete, workRequired: b.workRequired, workDone: b.workDone,
@@ -9589,7 +9892,7 @@ async function performLoad(){
       // [Bottom-left swap] 'infopanel' removed here too, same reason as
       // the founding path — its hidden state is selection-driven, not
       // part of this generic reveal.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
       // Nothing is selected right after a load, so this just enforces
       // infopanel hidden / roster bar shown in the bottom-left slot.
@@ -9624,6 +9927,13 @@ async function performLoad(){
     arrivalsAccepted = state.arrivalsAccepted || 0;
     arrivalsRejected = state.arrivalsRejected || 0;
     lastEventDay = state.lastEventDay != null ? state.lastEventDay : -999;
+    // [Requested feature] pre-this-change saves have no lastArrivalDay —
+    // fall back to the save's own current day (already restored above
+    // via time.elapsed/deriveTime), not -999: an old save resuming past
+    // day 15 would otherwise read as an instant 999+-day dry spell and
+    // force an arrival the moment it loads. Falling back to "now" just
+    // starts the guarantee countdown fresh, same as a brand-new game.
+    lastArrivalDay = state.lastArrivalDay != null ? state.lastArrivalDay : time.totalDays;
     // SCHEMA v12: pre-Phase-12b saves have no reputation object at all —
     // falls back to the fresh, all-neutral-20 default already assigned
     // at declaration, same fallback shape as ministers/ministerRequests
@@ -9640,6 +9950,11 @@ async function performLoad(){
     promiseIdCounter = pendingPromises.length ? Math.max(...pendingPromises.map(p=>p.id))+1 : 0;
     lastCouncilYear = state.lastCouncilYear != null ? state.lastCouncilYear : 0;
     pendingCouncil = null; // never persisted — a contested vote mid-save just re-fires cleanly next year rather than restoring a modal without its context
+    // SCHEMA v12: pre-Phase-12.5 saves have neither field — fall back to
+    // the fresh defaults already assigned at declaration (no laws
+    // enacted, all sentiment neutral at 50). [Phase 12.5]
+    enactedLaws = state.enactedLaws ? { ...state.enactedLaws } : {};
+    if(state.factionSentiment) factionSentiment = { ...factionSentiment, ...state.factionSentiment };
     pendingArrival = null;
     buildings.length = 0;
     buildingGrid.clear();
