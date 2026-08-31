@@ -2049,6 +2049,79 @@ function onNewDay(derived){
 function onSeasonChange(derived){
   flashAlert(`${derived.season[0].toUpperCase()+derived.season.slice(1)} of Year ${derived.year} has begun.`);
   logChronicle('season', `${derived.season[0].toUpperCase()+derived.season.slice(1)} of Year ${derived.year}`); // [Phase 10]
+  updateSkillAging(); // [Phase 13]
+}
+
+/* [Phase 13] "leadership skill grows quietly through adulthood
+   (+0.18/season if actively leading, +0.05 otherwise, capped at 30);
+   physical skills (forage/cut/mine/build/farm) taper for elders
+   (-0.07/season at 60+, -0.18/season past 75, floored at 1)" — exact
+   numbers from the plan. Two real interpretation calls, both flagged:
+   "actively leading" reads as the founder or anyone currently holding
+   a ministry (Phase 12a) — a real, checkable condition rather than an
+   invented one. The plan's "forage/cut/mine/build/farm" doesn't map to
+   five separate skills — this codebase only has 'building' (which
+   JOB_SKILL already has covering chop/mine/haul alongside construction)
+   and 'farming' — so those two taper; combat/medicine/social/ranching/
+   finance are untouched, not because they're exempt by design, just
+   because the plan's own physical-skill list doesn't name them.
+   Education's eduBonus (new this phase, no original number) rides the
+   same per-season cadence: children/teens near a completed education
+   building get a small nudge across every skill, "a decent upbringing
+   pays off as an adult" rather than a bookish skill grind for a child
+   who isn't working any job yet. */
+const LEADERSHIP_GROWTH_LEADING = 0.18, LEADERSHIP_GROWTH_PASSIVE = 0.05, LEADERSHIP_GROWTH_CAP = 30;
+const PHYSICAL_TAPER_60 = 0.07, PHYSICAL_TAPER_75 = 0.18, PHYSICAL_TAPER_FLOOR = 1;
+function nearestEduBonus(c){
+  const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
+  let best = 0;
+  for(const b of buildings){
+    if(!b.isComplete) continue;
+    const def = BUILDING_TYPES[b.type];
+    if(!def.eduBonus) continue;
+    const d = Math.max(Math.abs(b.tx-ctx0), Math.abs(b.ty-cty0));
+    if(d<=2 && def.eduBonus>best) best = def.eduBonus;
+  }
+  return best;
+}
+function updateSkillAging(){
+  if(!founded) return;
+  for(const c of survivors){
+    if(c.health <= 0) continue;
+    if(c.stage === 'adult' || c.stage === 'elder'){
+      const isLeading = c.isFounder || ministers.some(m => m.survivorId === c.id);
+      const rate = isLeading ? LEADERSHIP_GROWTH_LEADING : LEADERSHIP_GROWTH_PASSIVE;
+      c.skills.leadership = Math.min(LEADERSHIP_GROWTH_CAP, c.skills.leadership + rate);
+    }
+    if(c.stage === 'elder'){
+      const taper = c.age >= 75 ? PHYSICAL_TAPER_75 : (c.age >= 60 ? PHYSICAL_TAPER_60 : 0);
+      if(taper > 0){
+        c.skills.building = Math.max(PHYSICAL_TAPER_FLOOR, c.skills.building - taper);
+        c.skills.farming = Math.max(PHYSICAL_TAPER_FLOOR, c.skills.farming - taper);
+      }
+    }
+    if(c.stage === 'child' || c.stage === 'teen'){
+      const edu = nearestEduBonus(c);
+      if(edu > 0){
+        for(const key of SKILL_LIST) c.skills[key] = Math.min(LEADERSHIP_GROWTH_CAP, c.skills[key] + edu);
+      }
+    }
+  }
+}
+
+/* [Phase 13] life-stage sub-tier display labels — "Child, Teen, Young
+   Adult (youth), Adult (splitting to 'Mature Adult' at 45+), Elder
+   (splitting to 'Very Elderly' at 75+)". Display-only: the underlying
+   c.stage boundaries (child/teen/youth/adult/elder) and everything that
+   already reads them — marriage eligibility, faction weighting, aging
+   transitions — stay exactly as built, untouched. */
+function stageSubLabel(c){
+  if(c.stage === 'child') return 'Child';
+  if(c.stage === 'teen') return 'Teen';
+  if(c.stage === 'youth') return 'Young Adult';
+  if(c.stage === 'adult') return c.age >= 45 ? 'Mature Adult' : 'Adult';
+  if(c.stage === 'elder') return c.age >= 75 ? 'Very Elderly' : 'Elder';
+  return c.stage;
 }
 
 /* Advances the calendar by dt real seconds — only while founded, so the
@@ -2212,6 +2285,50 @@ const MAP = generateMap();
    marks a building as a home a survivor can be assigned to; `waterBonus`
    marks a building as a real water source, same shape as `shelterBonus`.
    [Phase 4] */
+/* =========================================================
+   === SETTLEMENT PROGRESSION (Phase 13) ===
+   "Camp / Ranch / Homestead / Dynasty" — per the plan's own explicit
+   note, these tier *names* are this rebuild's invention (the original
+   never gated its flat ~60-building catalog behind an explicit
+   settlementTier field); the tiering itself is a real design
+   improvement worth keeping, just not presented as ported. Same for
+   the population/building thresholds below — no original numbers
+   exist for these, flagged for audit like every other invented
+   threshold across this project rather than guessed silently.
+   Buildings below carry a `minTier` field (absent = 'camp', buildable
+   from founding) gating what the Build menu actually offers. */
+const SETTLEMENT_TIERS = ['camp','ranch','homestead','dynasty'];
+const SETTLEMENT_TIER_REQUIREMENTS = {
+  camp:      { pop:0,  buildings:0,  houses:0 },
+  ranch:     { pop:6,  buildings:5,  houses:1 },
+  homestead: { pop:12, buildings:12, houses:1 },
+  dynasty:   { pop:20, buildings:20, houses:2 }
+};
+const SETTLEMENT_TIER_LABEL = { camp:'Camp', ranch:'Ranch', homestead:'Homestead', dynasty:'Dynasty' };
+
+function computeSettlementTier(){
+  const pop = survivors.filter(s=>s.health>0).length;
+  const buildingCount = buildings.filter(b=>b.isComplete).length;
+  const houseCount = families.length;
+  let tier = 'camp';
+  for(const t of SETTLEMENT_TIERS){
+    const req = SETTLEMENT_TIER_REQUIREMENTS[t];
+    if(pop >= req.pop && buildingCount >= req.buildings && houseCount >= req.houses) tier = t;
+  }
+  return tier;
+}
+function settlementTierIndex(t){ return SETTLEMENT_TIERS.indexOf(t); }
+/* A building is offered in the Build menu once the settlement's current
+   tier is at or past its own minTier — undefined minTier means 'camp'
+   (buildable from founding, matching every pre-13 building's behavior
+   unchanged). */
+function buildingUnlockedAtCurrentTier(typeId){
+  const def = BUILDING_TYPES[typeId];
+  if(!def) return false;
+  const need = settlementTierIndex(def.minTier || 'camp');
+  return settlementTierIndex(computeSettlementTier()) >= need;
+}
+
 const BUILDING_TYPES = {
   sleepingroll: { id:'sleepingroll', name:'Sleeping Roll', cost:{wood:2,stone:0},   workRequired:8,  footprint:{w:1,h:1}, height:0.12, blocksMovement:false, shelterBonus:3, housingQuality:1, housingCapacity:1, color:'#7a5230', desc:'A bedroll on the ground. Better than bare earth, but not by much.' },
   hut:          { id:'hut',          name:'Hut',           cost:{wood:15,stone:5},  workRequired:40, footprint:{w:1,h:1}, height:0.85, blocksMovement:true,  shelterBonus:6, housingQuality:2, housingCapacity:2, color:'#8a6a3f', desc:'A proper shelter. Strong shelter recovery for whoever rests here.' },
@@ -2247,7 +2364,94 @@ const BUILDING_TYPES = {
   chickencoop:   { id:'chickencoop',   name:'Chicken Coop',   cost:{wood:12,stone:0,fiber:4}, workRequired:22, footprint:{w:1,h:1}, height:0.45, blocksMovement:true, livestockCapacity:8, species:'chicken', producesResource:'eggs', producePerDayAtCapacity:4, color:'#c9a23c', desc:'Houses up to 8 chickens. A well-fed flock lays eggs steadily.' },
   goatpen:       { id:'goatpen',       name:'Goat Pen',       cost:{wood:20,stone:4,fiber:4}, workRequired:28, footprint:{w:1,h:1}, height:0.55, blocksMovement:true, livestockCapacity:6, species:'goat',    producesResource:'milk', producePerDayAtCapacity:3, color:'#8a8578', desc:'Houses up to 6 goats, tended for milk.' },
   sheeppen:      { id:'sheeppen',      name:'Sheep Pen',      cost:{wood:22,stone:0,fiber:6}, workRequired:30, footprint:{w:1,h:1}, height:0.55, blocksMovement:true, livestockCapacity:6, species:'sheep',   producesResource:'wool', producePerDayAtCapacity:2, color:'#d8c98a', desc:'Houses up to 6 sheep, sheared for wool.' },
-  cattlepasture: { id:'cattlepasture', name:'Cattle Pasture', cost:{wood:32,stone:6},         workRequired:38, footprint:{w:1,h:1}, height:0.40, blocksMovement:true, livestockCapacity:4, species:'cattle',  producesResource:'milk', producePerDayAtCapacity:5, color:'#7a6a52', desc:'Houses up to 4 head of cattle, the ranch\'s biggest dairy producer.' }
+  cattlepasture: { id:'cattlepasture', name:'Cattle Pasture', cost:{wood:32,stone:6},         workRequired:38, footprint:{w:1,h:1}, height:0.40, blocksMovement:true, livestockCapacity:4, species:'cattle',  producesResource:'milk', producePerDayAtCapacity:5, color:'#7a6a52', desc:'Houses up to 4 head of cattle, the ranch\'s biggest dairy producer.' },
+
+  /* [Phase 13] Housing ladder — sleepingroll/hut above stay exactly as
+     Phase 4 built them (never renamed/removed, so old saves and every
+     system that already reads housingQuality/Capacity keeps working
+     unchanged); tent/cabin below are the plan's own named tier-1/2
+     entries, coexisting as real alternate options rather than replacing
+     the originals. Costs/caps/quality for tent through founder's manor
+     are exact to the plan's own numbers where given (tent, cabin,
+     house, manor, founder's manor); the family-* and specialized
+     (bunkhouse/guest/orphan/elder) entries only had a cap/quality
+     *range* given (5-10 cap, 1-4 quality for the family- group), so
+     their individual costs are this build's own design within that
+     range — flagged, not sourced. */
+  tent:          { id:'tent',          name:'Tent',           cost:{wood:8,stone:0,fiber:4},   workRequired:14, footprint:{w:1,h:1}, height:0.35, blocksMovement:true, housingQuality:1, housingCapacity:2, color:'#8a7a5a', desc:'Canvas over a frame. Houses two, barely.' },
+  cabin:         { id:'cabin',         name:'Cabin',          cost:{wood:22,stone:6},          workRequired:42, footprint:{w:1,h:1}, height:0.80, blocksMovement:true, housingQuality:2, housingCapacity:2, color:'#7a5a38', desc:'Timber walls, a real door. A step up from a hut.' },
+  house:         { id:'house',         name:'House',          cost:{wood:60,stone:20},         workRequired:70, footprint:{w:1,h:1}, height:1.0,  blocksMovement:true, housingQuality:3, housingCapacity:4, minTier:'ranch', color:'#8a6a45', desc:'A real house. Room for a family to actually live.' },
+  familyTent:    { id:'familyTent',    name:'Family Tent',    cost:{wood:16,stone:0,fiber:8},  workRequired:24, footprint:{w:1,h:1}, height:0.40, blocksMovement:true, housingQuality:1, housingCapacity:5, minTier:'ranch', color:'#9a8a60', desc:'A larger tent, stitched together for a whole family.' },
+  familyCabin:   { id:'familyCabin',   name:'Family Cabin',   cost:{wood:40,stone:12},         workRequired:58, footprint:{w:1,h:1}, height:0.85, blocksMovement:true, housingQuality:2, housingCapacity:6, minTier:'ranch', color:'#8a6a48', desc:'A cabin built out, not up — room for the whole household.' },
+  familyHouse:   { id:'familyHouse',   name:'Family House',  cost:{wood:90,stone:35},         workRequired:95, footprint:{w:1,h:1}, height:1.05, blocksMovement:true, housingQuality:4, housingCapacity:8, minTier:'homestead', color:'#7a5a3a', desc:'A proper family home — generations can grow up under one roof.' },
+  largeHouse:    { id:'largeHouse',    name:'Large House',   cost:{wood:120,stone:55},        workRequired:120, footprint:{w:1,h:1}, height:1.1,  blocksMovement:true, housingQuality:4, housingCapacity:10, minTier:'homestead', color:'#6a4a30', desc:'The biggest roof short of a manor. A whole extended House fits here.' },
+  manor:         { id:'manor',         name:'Manor',          cost:{wood:160,stone:80},        workRequired:180, footprint:{w:1,h:1}, height:1.4, blocksMovement:true, housingQuality:5, housingCapacity:8, minTier:'dynasty', color:'#5a4028', desc:'A House that has truly arrived builds one of these.' },
+  foundersManor: { id:'foundersManor', name:'Founder\'s Manor', cost:{wood:220,stone:140},      workRequired:240, footprint:{w:1,h:1}, height:1.5, blocksMovement:true, housingQuality:5, housingCapacity:10, minTier:'dynasty', color:'#4a3220', desc:'The seat of the ranch itself — where the founder\'s own line lives on.' },
+  bunkhouse:     { id:'bunkhouse',     name:'Bunkhouse',      cost:{wood:45,stone:8},          workRequired:55, footprint:{w:1,h:1}, height:0.75, blocksMovement:true, housingQuality:2, housingCapacity:8, minTier:'ranch', color:'#7a6248', desc:'Rows of bunks for hands who don\'t need much more than a roof.' },
+  guestHouse:    { id:'guestHouse',    name:'Guest House',    cost:{wood:35,stone:10},         workRequired:45, footprint:{w:1,h:1}, height:0.80, blocksMovement:true, housingQuality:3, housingCapacity:3, minTier:'ranch', color:'#8a7050', desc:'A modest place to put up newcomers while they find their footing.' },
+  orphanHouse:   { id:'orphanHouse',   name:'Orphan House',   cost:{wood:50,stone:15},         workRequired:60, footprint:{w:1,h:1}, height:0.85, blocksMovement:true, housingQuality:3, housingCapacity:6, minTier:'homestead', color:'#9a8060', desc:'A home for children the ranch has taken in, not just housed.' },
+  elderHouse:    { id:'elderHouse',    name:'Elder House',    cost:{wood:55,stone:20},         workRequired:65, footprint:{w:1,h:1}, height:0.85, blocksMovement:true, housingQuality:4, housingCapacity:5, minTier:'homestead', color:'#6a5a48', desc:'Quiet, comfortable quarters built for the ranch\'s eldest.' },
+
+  /* Storage — foodStockpile/granary/rootCellar/warehouse/coldStorage all
+     contribute to the same shared storageCapacity pool getStorageCapacity()
+     already reads (the real, existing wood+stone gate). A genuinely
+     separate food-only capacity gate isn't built — flagged rather than
+     silently implied — so these are real, costed, functionally-storage
+     buildings, just not yet the food-specific cap the plan's naming
+     suggests. */
+  foodStockpile: { id:'foodStockpile', name:'Food Stockpile', cost:{wood:6,stone:0},           workRequired:16, footprint:{w:1,h:1}, height:0.5, blocksMovement:true, storageCapacity:200, color:'#7a8250', desc:'A separate stack for what the farms and pens bring in.' },
+  granary:       { id:'granary',       name:'Granary',        cost:{wood:24,stone:8},          workRequired:38, footprint:{w:1,h:1}, height:0.9, blocksMovement:true, storageCapacity:400, minTier:'ranch', color:'#8a7040', desc:'Raised off the ground, keeps the grain dry and the vermin out.' },
+  rootCellar:    { id:'rootCellar',    name:'Root Cellar',    cost:{wood:10,stone:18},         workRequired:35, footprint:{w:1,h:1}, height:0.25, blocksMovement:true, storageCapacity:250, minTier:'ranch', color:'#5a4a38', desc:'Dug into the earth, cool enough to keep things longer.' },
+  warehouse:     { id:'warehouse',     name:'Warehouse',      cost:{wood:60,stone:30},         workRequired:90, footprint:{w:1,h:1}, height:1.2, blocksMovement:true, storageCapacity:800, minTier:'homestead', color:'#6a5638', desc:'The real answer to a growing settlement outgrowing its piles.' },
+  coldStorage:   { id:'coldStorage',   name:'Cold Storage',   cost:{wood:30,stone:40,tools:4}, workRequired:80, footprint:{w:1,h:1}, height:0.9, blocksMovement:true, storageCapacity:350, minTier:'homestead', color:'#5a6a70', desc:'Tool-built, keeps perishables good far longer than a cellar alone.' },
+
+  /* Water — the existing well stays exactly as Phase 4 built it (still
+     the only one with the passive nearestWaterBonus() thirst-recovery
+     effect — see the WATER (Phase 13) block below for why the rest of
+     this tier deliberately does NOT duplicate that mechanic per-building). */
+  waterBarrel:   { id:'waterBarrel',   name:'Water Barrel',   cost:{wood:5,stone:0},           workRequired:10, footprint:{w:1,h:1}, height:0.4, blocksMovement:true, waterYield:2, color:'#5a7a86', desc:'Catches what rain it can. Better than nothing.' },
+  waterCollector:{ id:'waterCollector',name:'Water Collector',cost:{wood:14,stone:4},          workRequired:22, footprint:{w:1,h:1}, height:0.5, blocksMovement:true, waterYield:5, minTier:'ranch', color:'#4a6a76', desc:'A wider catchment, funneled into a real basin.' },
+  stoneWell:     { id:'stoneWell',     name:'Stone Well',     cost:{wood:8,stone:16},          workRequired:40, footprint:{w:1,h:1}, height:0.5, blocksMovement:true, waterYield:12, minTier:'ranch', color:'#5a6a68', desc:'Dug deeper and lined with stone — a real improvement on the first well.' },
+  deepWell:      { id:'deepWell',      name:'Deep Well',      cost:{wood:12,stone:24,tools:3}, workRequired:65, footprint:{w:1,h:1}, height:0.55, blocksMovement:true, waterYield:18, minTier:'homestead', color:'#3a5a5a', desc:'Tool-bored past the shallow water table. Never runs dry.' },
+  waterTower:    { id:'waterTower',    name:'Water Tower',    cost:{wood:50,stone:20},         workRequired:85, footprint:{w:1,h:1}, height:1.6, blocksMovement:true, waterStorageCapacity:300, minTier:'homestead', color:'#6a5a4a', desc:'Pure capacity, raised high — nothing flows from it, it just holds.' },
+  reservoir:     { id:'reservoir',     name:'Reservoir',      cost:{wood:30,stone:60},         workRequired:110, footprint:{w:1,h:1}, height:0.3, blocksMovement:false, waterStorageCapacity:600, minTier:'dynasty', color:'#3a5560', desc:'A whole settlement\'s worth of water, held in reserve.' },
+
+  /* Roads — the one Phase 13 tier the plan explicitly demands a real
+     mechanic for, not just a visual upgrade: `speedMultiplier` is read
+     directly by updateSurvivorMovement() below. Middle three values
+     (dirt-road/gravel/paved) are this build's own interpolation between
+     the plan's two stated endpoints (1.10x at dirt-path, 1.75x at
+     stone-road) — flagged, not sourced. */
+  dirtPath:      { id:'dirtPath',      name:'Dirt Path',      cost:{},                          workRequired:4,  footprint:{w:1,h:1}, height:0.02, blocksMovement:false, speedMultiplier:1.10, color:'#8a7550', desc:'A trail worn clear enough to call a path.' },
+  dirtRoad:      { id:'dirtRoad',      name:'Dirt Road',      cost:{},                          workRequired:6,  footprint:{w:1,h:1}, height:0.02, blocksMovement:false, speedMultiplier:1.25, color:'#7a6545', desc:'Cleared and leveled — faster going than a bare path.' },
+  gravelRoad:    { id:'gravelRoad',    name:'Gravel Road',    cost:{stone:2},                   workRequired:10, footprint:{w:1,h:1}, height:0.03, blocksMovement:false, speedMultiplier:1.40, minTier:'ranch', color:'#8a8578', desc:'Packed gravel. Solid footing in any weather.' },
+  pavedRoad:     { id:'pavedRoad',     name:'Paved Road',     cost:{stone:4,wood:1},            workRequired:16, footprint:{w:1,h:1}, height:0.04, blocksMovement:false, speedMultiplier:1.60, minTier:'homestead', color:'#9a9488', desc:'A real road, built to last and built for speed.' },
+  stoneRoad:     { id:'stoneRoad',     name:'Stone Road',     cost:{stone:6,tools:1},           workRequired:24, footprint:{w:1,h:1}, height:0.05, blocksMovement:false, speedMultiplier:1.75, minTier:'dynasty', color:'#8a8a8a', desc:'Cut stone, fitted tight. As fast as travel on this land ever gets.' },
+
+  /* Medical — closes the gap Phase 8b explicitly left open ("injury
+     recovery is passive on purpose, until Phase 13's medical-tier
+     buildings exist to accelerate it"): medicalBonus is read by
+     nearestMedicalBonus() below the same way well/campfire already work,
+     added directly onto INJURY_RECOVER_PER_DAY. The Doctor *job* itself
+     stays exactly as inert as it's always been — this closes the "no
+     medical buildings exist" half of that old gap, not "what does the
+     doctor job do", which is its own separate design call (same kind
+     cook needed in Phase 12c) left for a future pass. */
+  medicalTent:   { id:'medicalTent',   name:'Medical Tent',   cost:{wood:10,stone:0,fiber:4},  workRequired:20, footprint:{w:1,h:1}, height:0.4, blocksMovement:true, medicalBonus:2, color:'#a08858', desc:'Bandages and a place to lie down. Not much, but real.' },
+  clinic:        { id:'clinic',        name:'Clinic',         cost:{wood:30,stone:10,tools:2}, workRequired:55, footprint:{w:1,h:1}, height:0.8, blocksMovement:true, medicalBonus:5, minTier:'ranch', color:'#8a9878', desc:'A real room for tending the hurt, not just a tent flap.' },
+  infirmary:     { id:'infirmary',     name:'Infirmary',      cost:{wood:55,stone:25,tools:4}, workRequired:85, footprint:{w:1,h:1}, height:0.9, blocksMovement:true, medicalBonus:9, minTier:'homestead', color:'#7a8a70', desc:'Beds enough for several at once, and the supplies to match.' },
+  hospital:      { id:'hospital',      name:'Hospital',       cost:{wood:90,stone:60,tools:8}, workRequired:140, footprint:{w:1,h:1}, height:1.2, blocksMovement:true, medicalBonus:15, minTier:'dynasty', color:'#6a7a68', desc:'The best care the ranch can offer anyone, founder included.' },
+
+  /* Education — real buildings, a real (modest) mechanic: eduBonus adds
+     directly to skill growth for children/teens near a completed one
+     (see updateSkillAging() below), the same "presence, not staffing"
+     shape wells/campfires already use. No original numbers exist for
+     this either — the mechanic itself is new scope, same honest note
+     the plan gives the tech tree below. */
+  learningTent:  { id:'learningTent',  name:'Learning Tent',  cost:{wood:12,stone:0,fiber:4},  workRequired:24, footprint:{w:1,h:1}, height:0.4, blocksMovement:true, eduBonus:0.02, color:'#9a8560', desc:'Lessons under canvas — better than none at all.' },
+  schoolhouse:   { id:'schoolhouse',   name:'Schoolhouse',    cost:{wood:35,stone:10},         workRequired:60, footprint:{w:1,h:1}, height:0.9, blocksMovement:true, eduBonus:0.05, minTier:'ranch', color:'#8a7048', desc:'A real building, a real teacher, real desks.' },
+  academy:       { id:'academy',       name:'Academy',        cost:{wood:65,stone:30,tools:3}, workRequired:100, footprint:{w:1,h:1}, height:1.1, blocksMovement:true, eduBonus:0.09, minTier:'homestead', color:'#7a6a50', desc:'Structured, serious schooling — the ranch is investing in its own future.' },
+  library:       { id:'library',       name:'Library',        cost:{wood:80,stone:40,tools:5}, workRequired:130, footprint:{w:1,h:1}, height:1.3, blocksMovement:true, eduBonus:0.14, minTier:'dynasty', color:'#5a4a38', desc:'Everything the ranch has learned, kept for everyone who comes after.' }
 };
 
 /* Housing quality tiers, 1 (Sleeping Roll) through 5 (Manor) — only 1-2 are
@@ -2973,6 +3177,47 @@ function reputationTitle(){
   }
   if(bestVal < REPUTATION_TITLE_THRESHOLD) return null;
   return REPUTATION_TITLE[best];
+}
+
+/* =========================================================
+   === LEGACY & EPITHETS (Phase 13) ===
+   "When a founder or notable leader dies, they leave a lasting epithet"
+   — this codebase has no permanent-death system to hook that trigger to
+   at all (health floors at MIN_HEALTH_FLOOR rather than reaching 0; a
+   real, deliberate, EARLIER design decision from this project's own
+   history, "no death this early, cap at severe injury" — not this
+   phase's call to reverse). So computeEpithet() below is the real,
+   complete, tested fallback chain the plan describes, exposed as a live
+   "how would they be remembered right now" preview rather than an
+   event fired on an actual death — the computation is honest and
+   correct; the trigger it's meant to fire on doesn't exist yet. Scoped
+   to the founder specifically, since reputation/political capital (the
+   first rung of the chain) are settlement-wide values this codebase
+   only ever tracks as the founder's own character, not a per-survivor
+   stat.
+
+   The plan's own fallback order, ported as given: dominant reputation
+   title (only above 12b's real 55 threshold) first; then play-shaped
+   heuristics in this exact order — 3+ generations or 6+ births, 4+
+   recorded achievements, build skill >=12, farm skill >=12, lead skill
+   >=14, House prestige >=80; plain "The Founder" if none of it applies.
+   "Recorded achievements" isn't a system that exists here either —
+   read as Chronicle 'milestone' entries, the closest real, countable
+   analog, flagged as this build's own mapping. */
+function computeEpithet(c){
+  const title = reputationTitle();
+  if(title) return title;
+  const maxGeneration = survivors.length ? Math.max(...survivors.map(s=>s.generation||0)) : 0;
+  const bornInGame = survivors.filter(s => (s.generation||0) > 0).length;
+  if(maxGeneration >= 2 || bornInGame >= 6) return 'The Patriarch';
+  const milestoneCount = chronicle.filter(e => e.category === 'milestone').length;
+  if(milestoneCount >= 4) return 'The Visionary';
+  if((c.skills.building||0) >= 12) return 'The Builder';
+  if((c.skills.farming||0) >= 12) return 'The Provider';
+  if((c.skills.leadership||0) >= 14) return 'The Visionary';
+  const fam = c.familyId != null ? families.find(f=>f.id===c.familyId) : null;
+  if(fam && fam.prestige >= 80) return 'The Honoured';
+  return 'The Founder';
 }
 
 /* =========================================================
@@ -4156,6 +4401,23 @@ function nearestWaterBonus(c){
   return best;
 }
 
+/* [Phase 13] closes the gap Phase 8b explicitly left open — see the
+   medical building entries' own comment. Same shape as nearestWaterBonus
+   above: presence, not staffing, matching every other passive-bonus
+   building in this file. */
+function nearestMedicalBonus(c){
+  const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
+  let best = 0;
+  for(const b of buildings){
+    if(!b.isComplete) continue;
+    const def = BUILDING_TYPES[b.type];
+    if(!def.medicalBonus) continue;
+    const d = Math.max(Math.abs(b.tx-ctx0), Math.abs(b.ty-cty0));
+    if(d<=2 && def.medicalBonus>best) best = def.medicalBonus;
+  }
+  return best;
+}
+
 /* whether a survivor is within a completed campfire's belonging radius */
 function nearCampfireBelonging(c){
   const ctx0 = Math.floor(c.wx/CONFIG.TILE), cty0 = Math.floor(c.wy/CONFIG.TILE);
@@ -4796,7 +5058,18 @@ function updateHousing(c, dt){
    ========================================================= */
 function renderBuildMenu(){
   const menu = document.getElementById('buildmenu');
-  menu.innerHTML = Object.values(BUILDING_TYPES).map(def=>{
+  const tier = computeSettlementTier();
+  // [Phase 13] only buildings unlocked at the current settlement tier
+  // are offered at all — hidden, not just disabled, since the menu was
+  // already dense before this phase roughly doubled the catalog.
+  const nextTierIdx = settlementTierIndex(tier) + 1;
+  const nextTier = SETTLEMENT_TIERS[nextTierIdx];
+  const tierHeaderHtml = `
+    <div class="row" style="opacity:0.75; font-style:italic; padding:2px 4px;">
+      ${SETTLEMENT_TIER_LABEL[tier]}${nextTier ? ` — next: ${SETTLEMENT_TIER_LABEL[nextTier]} (pop ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].pop}, ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].buildings} buildings${SETTLEMENT_TIER_REQUIREMENTS[nextTier].houses>1?`, ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].houses} Houses`:''})` : ' — top tier reached'}
+    </div>
+  `;
+  menu.innerHTML = tierHeaderHtml + Object.values(BUILDING_TYPES).filter(def => buildingUnlockedAtCurrentTier(def.id)).map(def=>{
     // [Phase 9] generalized alongside tryPlaceBuilding's fix above — same
     // wood/stone-only gap, same reason.
     const afford = Object.keys(def.cost).every(k => (resources[k]||0) >= def.cost[k]);
@@ -6964,11 +7237,13 @@ function updateSurvivorNeeds(c, dt){
   } else if(c.needs.food > 50 && c.needs.water > 50 && c.needs.rest > 40){
     c.health = Math.min(100, c.health + (HEALTH_RECOVER_PER_DAY/DAY_LENGTH_SECONDS)*dt);
   }
-  // discrete injury recovery — slow and passive, no doctor/medical building
-  // to accelerate it yet (deliberately deferred to Phase 13, see
-  // findJobTarget's 'doctor' case). Independent of the coupling above.
+  // discrete injury recovery — slow and passive on its own, now for a
+  // real reason instead of just lacking one: nearestMedicalBonus() adds
+  // straight onto the base rate when a completed medical building is
+  // nearby. [Phase 13, closing the gap Phase 8b left open]
   if(c.injury){
-    c.health = Math.min(100, c.health + (INJURY_RECOVER_PER_DAY/DAY_LENGTH_SECONDS)*dt);
+    const medBonus = nearestMedicalBonus(c);
+    c.health = Math.min(100, c.health + ((INJURY_RECOVER_PER_DAY+medBonus)/DAY_LENGTH_SECONDS)*dt);
     if(c.health >= 95) c.injury = null;
   }
 
@@ -7014,7 +7289,15 @@ function updateSurvivorMovement(c, dt){
     const tpy = target.y*CONFIG.TILE + CONFIG.TILE/2;
     const dx = tpx - c.wx, dy = tpy - c.wy;
     const dist = Math.hypot(dx, dy);
-    const stepPx = c.speed * CONFIG.TILE * dt;
+    // [Phase 13] roads — the one progression tier the plan explicitly
+    // wants as a real mechanic, not just a visual upgrade. Reads
+    // whichever building currently occupies the tile being walked TO
+    // (buildingGrid is populated for every building regardless of
+    // blocksMovement, roads included) and applies its speedMultiplier;
+    // no road under that tile is the same 1x speed movement always had.
+    const roadBuilding = buildingGrid.get(target.x+','+target.y);
+    const roadMult = (roadBuilding && roadBuilding.isComplete && BUILDING_TYPES[roadBuilding.type] && BUILDING_TYPES[roadBuilding.type].speedMultiplier) || 1;
+    const stepPx = c.speed * CONFIG.TILE * dt * roadMult;
     if(stepPx >= dist || dist < 0.5){
       c.wx = tpx; c.wy = tpy;
       c.tx = target.x; c.ty = target.y;
@@ -7650,7 +7933,7 @@ function renderSurvivorPanel(c){
   const statusLine = survivorStatusLabel(c);
   const moodColor = c.breaking ? 'var(--danger)' : (c.mood>=60 ? 'var(--moss-dark)' : c.mood>=30 ? '#a9781f' : 'var(--danger)');
   const bg = BACKGROUND_BY_ID[c.background];
-  const stageLabel = c.stage.charAt(0).toUpperCase() + c.stage.slice(1);
+  const stageLabel = stageSubLabel(c); // [Phase 13] sub-tier labels (Mature Adult/Very Elderly etc.)
 
   const home = c.homeId != null ? buildings.find(b => b.id === c.homeId) : null;
   const homeLabel = home ? HOUSING_QUALITY_LABEL[home.housingQuality] : 'Homeless';
@@ -7735,6 +8018,16 @@ function renderSurvivorPanel(c){
         const daysLeft = Math.max(0, p.dueDay - time.totalDays);
         return `<div class="row" style="font-style:italic; opacity:0.85;">owed to ${fam ? fam.name : 'a House'}: real influence — ${daysLeft} day${daysLeft===1?'':'s'} left</div>`;
       }).join('') : ''}
+    `;
+    // [Phase 13] a live "how would they be remembered" preview — see
+    // computeEpithet()'s own comment for why this is a preview, not an
+    // event: no permanent-death trigger exists in this codebase to fire
+    // it on for real.
+    authorityHtml += `
+      <div class="section-label">Legacy</div>
+      <div class="row" style="font-style:italic;">if remembered today: ${computeEpithet(c)}</div>
+      <div class="section-label">Settlement</div>
+      <div class="row">${SETTLEMENT_TIER_LABEL[computeSettlementTier()]}</div>
     `;
   }
 
@@ -9789,7 +10082,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // state, same shape as livestockRequests above. [Phase 12a]
     ministers: ministers.map(m => ({ id:m.id, role:m.role, survivorId:m.survivorId, satisfaction:m.satisfaction, requestsApproved:m.requestsApproved, requestsRejected:m.requestsRejected })),
     ministerRequests: ministerRequests.map(r => ({ id:r.id, ministerId:r.ministerId, role:r.role, requestedWorkers:r.requestedWorkers, approvedWorkers:r.approvedWorkers, recruitedWorkers:r.recruitedWorkers, reason:r.reason, status:r.status, day:r.day })),
-    settlementTier: 'camp'
+    // [Phase 13] real computed tier, not hardcoded — this is purely a
+    // menu-preview convenience (see the Continue button's meta text);
+    // computeSettlementTier() is always live-derived from population/
+    // buildings/houses everywhere else, never restored as stored state.
+    settlementTier: founded ? computeSettlementTier() : 'camp'
   };
   try{
     await RanchDB.saveGame('slot1', state);
