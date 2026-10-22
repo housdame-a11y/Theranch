@@ -209,6 +209,22 @@
   }
   #pauseIndicator[hidden]{ display:none; }
   @keyframes pause-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.55; } }
+  /* [Phase 15] speed controls — compact enough to live inline in the
+     HUD strip rather than their own floating cluster; unlike
+     #zoomcontrols these stay visible on phone-sized viewports too,
+     since there's no touch-gesture equivalent for time speed the way
+     pinch covers zoom. */
+  #speedcontrols{ display:flex; gap:3px; align-items:center; }
+  #speedcontrols[hidden]{ display:none; }
+  .speed-btn{
+    width:22px; height:20px; padding:0;
+    font-family:'Cinzel', serif; font-size:10px; font-weight:700;
+    background:var(--parchment-dark); border:1.5px solid var(--ink); border-radius:4px;
+    color:var(--ink); cursor:pointer; line-height:1;
+  }
+  .speed-btn:active{ transform:translateY(1px); }
+  .speed-btn.active{ background:var(--moss); color:var(--parchment); }
+  #pauseToggleBtn.active{ background:var(--ember-bright); color:var(--parchment); }
   #resourcebar{
     display:flex; gap:10px;
   }
@@ -939,6 +955,100 @@
     overflow:auto;
   }
   #lawsmenu[hidden]{ display:none; }
+  /* [Phase 13c] Research panel — same shape as Laws just above, reuses
+     .law-domain-card for its node cards (a locked node just adds
+     .tech-locked on top for the dimmed/disabled look). */
+  #researchbar{
+    position:relative;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #researchbar[hidden]{ display:none; }
+  #researchToggleBtn{
+    width:35px; height:35px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:50%;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #researchToggleBtn svg{ width:19px; height:19px; display:block; }
+  #researchToggleBtn:active{ transform:translateY(1px); }
+  #researchmenu{
+    position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 620px);
+    max-height:calc(var(--local-vh, 100vh) * 0.65);
+    overflow:auto;
+  }
+  #researchmenu[hidden]{ display:none; }
+  .tech-locked{ opacity:0.55; }
+  .tech-path-label{ opacity:0.7; font-style:italic; font-size:11.5px; margin-top:6px; }
+  /* [Phase 14] Expeditions panel — same toggle-button/panel shape as
+     Research just above; reuses .assign-row (and its .current selected
+     look) for the roster checklist and .law-domain-card for the
+     active/resolved trip cards. */
+  #expeditionsbar{
+    position:relative;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #expeditionsbar[hidden]{ display:none; }
+  #expeditionsToggleBtn{
+    width:35px; height:35px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:50%;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #expeditionsToggleBtn svg{ width:19px; height:19px; display:block; }
+  #expeditionsToggleBtn:active{ transform:translateY(1px); }
+  #expeditionsmenu{
+    position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 640px);
+    max-height:calc(var(--local-vh, 100vh) * 0.7);
+    overflow:auto;
+  }
+  #expeditionsmenu[hidden]{ display:none; }
+  .exp-kind-tabs{ display:flex; gap:6px; margin-bottom:8px; }
+  .exp-kind-tab{
+    flex:1; padding:6px 4px; font-size:11.5px; text-align:center; cursor:pointer;
+    border:1.5px solid var(--ink); border-radius:6px; background:var(--parchment);
+    font-family:'EB Garamond', serif;
+  }
+  .exp-kind-tab.active{ background:var(--moss); color:var(--parchment); }
+  .exp-roster-list{ max-height:160px; overflow:auto; border:1px solid rgba(43,29,20,0.2); border-radius:6px; margin:6px 0; }
+  .exp-forecast{ font-size:12px; padding:6px 2px; opacity:0.9; }
+  .exp-forecast .row{ display:flex; justify-content:space-between; }
+  /* [Phase 15] Leadership Dashboard — same toggle-button/panel shape
+     as Research/Expeditions above; its content reuses .minister-card
+     and .proposal-row (already styled for the Ministers/Dynasty
+     panels) rather than inventing a third card look for the same kind
+     of "pending decision" row. */
+  #leadershipbar{
+    position:relative;
+    display:flex; flex-direction:column-reverse; align-items:flex-end; gap:8px;
+  }
+  #leadershipbar[hidden]{ display:none; }
+  #leadershipToggleBtn{
+    width:35px; height:35px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 34% 30%, var(--parchment), var(--parchment-dark));
+    border:2px solid var(--ink); border-radius:50%;
+    color:var(--ink); cursor:pointer;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+  }
+  #leadershipToggleBtn svg{ width:19px; height:19px; display:block; }
+  #leadershipToggleBtn:active{ transform:translateY(1px); }
+  #leadershipmenu{
+    position:absolute; bottom:calc(100% + 8px); right:0; z-index:20;
+    padding:12px; min-width:320px; max-width:min(calc(var(--local-vw, 100vw) * 0.92), 640px);
+    max-height:calc(var(--local-vh, 100vh) * 0.7);
+    overflow:auto;
+  }
+  #leadershipmenu[hidden]{ display:none; }
+  .lead-section-label{ font-weight:600; font-size:13px; margin:10px 0 4px; opacity:0.85; }
+  .lead-section-label:first-child{ margin-top:0; }
+  .lead-vote-card{ font-size:12.5px; padding:8px 2px; }
+  .lead-vote-card .row{ display:flex; justify-content:space-between; padding:2px 0; }
   .law-domain-card{
     padding:8px 6px; border-bottom:1px solid rgba(43,29,20,0.15);
     font-family:'EB Garamond', serif; font-size:12.5px;
@@ -1045,6 +1155,44 @@
     background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
   }
   #terrainModal[hidden]{ display:none; }
+  /* [Phase 15] same dim-backdrop treatment as #terrainModal just above,
+     but z-index:85 rather than 60 — this modal (unlike terrainModal)
+     also opens from the main menu screen (#mainMenuScreen, z-index:80),
+     so it needs to sit above that too, while staying below
+     #confirmModal's 90 so an overwrite/delete confirm still shows on
+     top of it. */
+  #slotPickerModal{
+    position:absolute; inset:0; z-index:85;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
+  }
+  #slotPickerModal[hidden]{ display:none; }
+  #slotPickerList{ overflow-y:auto; display:flex; flex-direction:column; max-height:min(calc(var(--local-vh, 100vh) * 0.55), 420px); }
+  /* [Phase 15] Family Tree full screen — sits at the same level as
+     #terrainModal/#slotPickerModal (in-game only, never opened from
+     the main menu, so it doesn't need to out-rank it). */
+  #familyTreeScreen{
+    position:absolute; inset:0; z-index:65;
+    display:flex; flex-direction:column;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.94) 0%, rgba(20,13,9,0.98) 100%);
+  }
+  #familyTreeScreen[hidden]{ display:none; }
+  .family-tree-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; flex-shrink:0;
+    font-family:'EB Garamond', serif;
+  }
+  .family-tree-header .title{ font-size:20px; color:var(--parchment); font-weight:600; }
+  #familyTreeSvgWrap{
+    flex:1; overflow:auto; padding:0 16px;
+  }
+  #familyTreeSvgWrap svg{ display:block; }
+  #familyTreeDetail{
+    flex-shrink:0; margin:0 16px 16px; padding:10px 12px;
+    max-height:30vh; overflow-y:auto;
+  }
+  #familyTreeDetail:empty{ display:none; }
   #terrainList{ overflow-y:auto; display:flex; flex-direction:column; }
   .terrain-entry{
     display:flex; align-items:flex-start; gap:10px;
@@ -1155,6 +1303,21 @@
   html.local-narrow #jobsmenu{ min-width:0; max-width:calc(var(--local-vw, 100vw) * 0.82); }
   html.local-narrow .roster-row{ font-size:11.5px; }
   html.local-narrow .assign-panel{ max-width:calc(var(--local-vw, 100vw) * 0.92); }
+  /* [Phase 15] slot picker cards — reuses .law-domain-card's padding/
+     border rhythm (see Laws/Research/Expeditions panels) rather than
+     inventing a fourth card look. */
+  .slot-card{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 8px; border-bottom:1px solid rgba(43,29,20,0.15);
+    font-family:'EB Garamond', serif; cursor:pointer;
+  }
+  .slot-card.empty{ opacity:0.55; cursor:default; }
+  .slot-card.autosave{ background:rgba(90,122,134,0.08); }
+  .slot-card:active:not(.empty){ background:rgba(43,29,20,0.08); }
+  .slot-card-info{ display:flex; flex-direction:column; overflow:hidden; }
+  .slot-card-name{ font-weight:600; font-size:13.5px; }
+  .slot-card-meta{ font-size:11px; opacity:0.75; }
+  .slot-delete-btn{ flex-shrink:0; }
   /* [Wider panels pass] the desktop min-width bumps above (260-320px) are
      too wide once the screen itself is narrow — same 0.82 cap the roster
      panel already used, applied consistently to the other three dropdown
@@ -1465,6 +1628,10 @@
     <div class="menu-buttons">
       <button id="newGameBtn" class="menu-btn">New Game</button>
       <button id="continueBtn" class="menu-btn secondary" disabled>Continue</button>
+      <!-- [Phase 15] Continue is the one-tap "pick up where I left off"
+           default (whichever of the 4 slots is actually newest); this is
+           for anyone who wants to choose a specific one instead. -->
+      <button id="loadGameBtn" class="menu-btn secondary">Load Game</button>
     </div>
     <div id="continueMeta" class="menu-meta"></div>
   </div>
@@ -1539,6 +1706,24 @@
              gift/arrival prompt, confirm dialog) has paused the game —
              see pauseGame()/resumeGame(). -->
         <span id="pauseIndicator" hidden>⏸ Paused</span>
+        <!-- [Phase 15] player-facing speed controls — previously the
+             game only had an internal modal-driven pause (above), no
+             way for the player themselves to pause or fast-forward.
+             Deliberately a separate playerPaused flag from gamePaused
+             rather than reusing it directly: gamePaused already has
+             real multi-source semantics (pauseDepth, incremented by
+             whichever modals are currently open, only truly resuming
+             once every one of them has released) that a direct manual
+             toggle would conflict with — a modal closing could
+             silently un-pause a game the player explicitly paused
+             themselves. Two independent gates instead, both checked
+             before the sim advances. -->
+        <div id="speedcontrols" hidden>
+          <button id="pauseToggleBtn" class="speed-btn" title="Pause">⏸</button>
+          <button class="speed-btn speed-opt" data-speed="1" title="Normal speed">1×</button>
+          <button class="speed-btn speed-opt" data-speed="2" title="Double speed">2×</button>
+          <button class="speed-btn speed-opt" data-speed="3" title="Triple speed">3×</button>
+        </div>
         <span class="hud-divider"></span>
         <div id="resourcebar">
           <span class="resource"><span class="dot wood"></span><span id="woodCount">0</span></span>
@@ -1625,6 +1810,35 @@
     <div class="assign-sub">What each ground type means for building and travel.</div>
     <div id="terrainList"></div>
   </div>
+</div>
+
+<!-- [Phase 15] slot picker — one modal reused for both Save and Load,
+     mode-switched by data-mode on the panel itself (set in
+     openSlotPicker). Same .panel.assign-panel shape as Terrain Guide
+     just above. -->
+<div id="slotPickerModal" hidden>
+  <div class="panel assign-panel" id="slotPickerPanel" data-mode="save">
+    <div class="assign-header">
+      <span class="title" id="slotPickerTitle">Save Game</span>
+      <button id="slotPickerCloseBtn" class="mini-btn secondary">Close</button>
+    </div>
+    <div class="assign-sub" id="slotPickerSub">Choose a slot to save to.</div>
+    <div id="slotPickerList"></div>
+  </div>
+</div>
+
+<!-- [Phase 15] Family Tree — a real full screen, not another small
+     toggle panel, per the plan's own explicit ask. Opened from a
+     button inside the Dynasty panel, closed back to the running
+     game (never the main menu — there's nothing to see here before
+     a settlement exists). -->
+<div id="familyTreeScreen" hidden>
+  <div class="family-tree-header">
+    <span class="title">Family Tree</span>
+    <button id="familyTreeCloseBtn" class="mini-btn secondary">Close</button>
+  </div>
+  <div id="familyTreeSvgWrap"></div>
+  <div id="familyTreeDetail" class="panel"></div>
 </div>
 
 <!-- [Relocated] moved out of the #bottomright cluster to sit directly
@@ -1812,6 +2026,47 @@
       </button>
       <div id="lawsmenu" class="panel" hidden></div>
     </div>
+    <!-- [Phase 13c] -->
+    <div id="researchbar" hidden>
+      <button id="researchToggleBtn" class="panel toggle-btn" aria-label="Research" title="Research">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <!-- Simple flask/beaker glyph, flat line-art filled with
+               var(--ink) — same visual style as the other icons. -->
+          <path d="M40 15 L40 45 L20 78 Q17 85 25 85 L75 85 Q83 85 80 78 L60 45 L60 15 Z" fill="var(--ink)"/>
+          <rect x="34" y="12" width="32" height="8" rx="2" fill="var(--ink)"/>
+          <path d="M30 68 L70 68 L75 78 Q77 82 72 82 L28 82 Q23 82 25 78 Z" fill="var(--parchment)"/>
+        </svg>
+      </button>
+      <div id="researchmenu" class="panel" hidden></div>
+    </div>
+    <!-- [Phase 14] -->
+    <div id="expeditionsbar" hidden>
+      <button id="expeditionsToggleBtn" class="panel toggle-btn" aria-label="Expeditions" title="Expeditions">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <!-- Simple compass-rose glyph, flat line-art. -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="var(--ink)" stroke-width="6"/>
+          <path d="M50 22 L58 50 L50 78 L42 50 Z" fill="var(--ink)"/>
+        </svg>
+      </button>
+      <div id="expeditionsmenu" class="panel" hidden></div>
+    </div>
+    <!-- [Phase 15] Leadership Dashboard — consolidates what was
+         scattered across Ministers/Dynasty/the council system into one
+         "what needs my attention as leader" screen, per the plan's own
+         "the leadership layer needs its own screen" line. Named
+         "Leadership" rather than "Council" specifically to stay
+         distinct from #councilModal (Phase 12d's actual vote-event
+         popup) — different thing, adjacent name would invite mixing
+         the two up. -->
+    <div id="leadershipbar" hidden>
+      <button id="leadershipToggleBtn" class="panel toggle-btn" aria-label="Leadership" title="Leadership">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <!-- Simple crown glyph, flat line-art. -->
+          <path d="M20 40 L35 60 L50 30 L65 60 L80 40 L75 70 L25 70 Z" fill="var(--ink)"/>
+        </svg>
+      </button>
+      <div id="leadershipmenu" class="panel" hidden></div>
+    </div>
     <div id="buildbar" hidden>
       <button id="buildToggleBtn" class="panel toggle-btn" aria-label="Build" title="Build">
         <img src="data:image/png;base64,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" alt="" aria-hidden="true">
@@ -1860,12 +2115,19 @@ const RanchDB = (() => {
     const store = await tx('saves', 'readwrite');
     await reqToPromise(store.put(state, slotId));
     const metaStore = await tx('meta', 'readwrite');
+    // [Phase 15 bugfix] `generation` was in this doc's own §4.5 meta
+    // spec from the start but never actually written — the highest
+    // generation number among this save's survivors, same value the
+    // Dynasty panel already derives elsewhere, just also surfaced here
+    // for a slot-picker summary line.
+    const generation = (state.survivors || []).reduce((max, s) => Math.max(max, s.generation || 0), 0);
     await reqToPromise(metaStore.put({
       name: state.name || slotId,
       timestamp: Date.now(),
       tick: state.tick || 0,
       survivorCount: (state.survivors || []).length,
-      settlementTier: state.settlementTier || 'camp'
+      settlementTier: state.settlementTier || 'camp',
+      generation
     }, slotId));
     return true;
   }
@@ -2033,6 +2295,8 @@ function onNewDay(derived){
 
   updateEventEngine(derived); // [Phase 10]
   updateAttractionAndProposals(); // [Phase 11]
+  updateExpeditionReturns(); // [Phase 14]
+  performAutosave(); // [Phase 15] fire-and-forget, once per in-game day
   updateAutonomousLivestockRequests(); // [Livestock panel redesign follow-up]
   updateMarriages(); // [Phase 11]
   updateAging(); // [Phase 11]
@@ -2044,6 +2308,7 @@ function onNewDay(derived){
   updateChallengerBuildup(); // [Phase 12c]
   updateCouncil(derived); // [Phase 12d]
   updatePendingPromises(); // [Phase 12d]
+  updateMortality(); // [Phase 13]
 }
 
 function onSeasonChange(derived){
@@ -2352,6 +2617,23 @@ const BUILDING_TYPES = {
      not built this phase (stone-wall is a Phase 13 upgrade tier over
      Palisade; fence didn't make this pass's minimal subset). */
   palisade:  { id:'palisade',  name:'Palisade',   cost:{wood:10,stone:0}, workRequired:12, footprint:{w:1,h:1}, height:0.60, blocksMovement:true,  maxHP:60,  defenseBonus:8,  color:'#6b5d45', desc:'A wall of sharpened logs. Slows raiders — and now actually does, rather than just saying so.' },
+  /* [Phase 13c] the real Phase-13-upgrade-tier-over-Palisade this
+     codebase's own earlier comment (see the block comment just above
+     this catalog) flagged as deliberately deferred to this phase. cost
+     is the exact original number (stone-wall: stone 14+wood 2);
+     workRequired/maxHP/defenseBonus have no original source (same as
+     Palisade's own maxHP/defenseBonus above) so they're this build's
+     own invented numbers, roughly double Palisade's — a "real upgrade,
+     not a reskin" in the same spirit as the road tiers. Gated behind
+     `requiresTech` rather than a `minTier`: the settlement-tier system
+     answers "is the settlement big enough," the tech tree answers "has
+     it actually learned how" — a Stone Wall stays locked at any tier
+     until Reinforced Fencing is researched, same as every other
+     tech-gated entry below. Deliberately placed via the normal
+     single-click flow, not the two-click wall-line tool — that tool is
+     documented above (see handleBuildClick) as scoped to Palisade only
+     on purpose, and generalizing it wasn't part of this phase's ask. */
+  stoneWall: { id:'stoneWall', name:'Stone Wall', cost:{wood:2,stone:14}, workRequired:24, footprint:{w:1,h:1}, height:0.65, blocksMovement:true, maxHP:130, defenseBonus:16, requiresTech:'reinforcedFencing', color:'#8a8a8a', desc:'Cut stone in place of sharpened logs. Takes a real hit and keeps standing.' },
   gate:      { id:'gate',      name:'Gate',       cost:{wood:16,stone:4}, workRequired:18, footprint:{w:1,h:1}, height:0.60, blocksMovement:false, maxHP:50,  defenseBonus:4,  color:'#9c7a4a', desc:'The one deliberate opening in a palisade run — survivors pass through freely, raiders don\'t get through free.' },
   guardpost: { id:'guardpost', name:'Guard Post', cost:{wood:14,stone:4}, workRequired:20, footprint:{w:1,h:1}, height:0.70, blocksMovement:true,  maxHP:80,  defenseBonus:6,  color:'#7a6a52', desc:'Unlocks the Guard job. A staffed post adds the guard\'s combat skill straight to the settlement\'s defense.' },
   watchtower:{ id:'watchtower',name:'Watchtower', cost:{wood:24,stone:8}, workRequired:45, footprint:{w:1,h:1}, height:1.30, blocksMovement:true,  maxHP:100, defenseBonus:10, detectionRadius:10, produces:null, color:'#4a3f2e', desc:'A detection ring around the settlement — an incursion crossing it gives real warning instead of none.' },
@@ -3221,6 +3503,104 @@ function computeEpithet(c){
 }
 
 /* =========================================================
+   === PERMANENT DEATH & SUCCESSION (Phase 13, on direct request) ===
+   Reverses this rebuild's own earlier "no death this early, cap at
+   severe injury" decision (see MIN_HEALTH_FLOOR's own comment) — the
+   original always ran starvation and injury to real death; this
+   restores that rather than inventing something foreign to the source
+   material. Survivors are never removed from the `survivors` array on
+   death — every system in this file that means "living" already checks
+   `health>0` (loyalty, factions, challenger buildup, heir scoring, the
+   roster bar, ...), so a dead survivor sitting in place with health
+   locked at 0 is automatically excluded everywhere that already
+   mattered, without touching dozens of call sites. What death actually
+   does: freezes their epithet (computeEpithet(), same fallback chain
+   the plan gives, now with a real trigger instead of just a live
+   preview), releases whatever job/ministry/caretaker duty they held,
+   logs a real Chronicle 'death' entry (inert since Phase 10 until now),
+   and — if the deceased was the founder — hands off to an heir, closing
+   the also-inert 'succession' Chronicle category and finally giving
+   Phase 11's preferredHeirId a real mechanical purpose beyond a marker
+   nobody read. */
+function killSurvivor(c, cause){
+  if(c.deceased) return; // already processed — never double-fire
+  c.deceased = true;
+  c.health = 0;
+  c.deathDay = time.totalDays;
+  c.deathCause = cause;
+  c.epithetAtDeath = computeEpithet(c);
+  c.role = null;
+  if(c.job) releaseJob(c);
+  const asMinister = ministers.find(m => m.survivorId === c.id);
+  if(asMinister) dismissMinister(asMinister.role);
+  for(const a of animals) if(a.caretakerId === c.id) a.caretakerId = null;
+  for(const b of buildings) if(b.cookAssignedId === c.id) b.cookAssignedId = null;
+  if(preferredHeirId === c.id) preferredHeirId = null;
+  logChronicle('death', `${c.name} ${c.surname} has died`, `${cause} — remembered as ${c.epithetAtDeath}`);
+  flashAlert(`${c.name} ${c.surname} has died (${cause}).`);
+  if(c.isFounder) handleFounderSuccession(c);
+}
+
+/* Reuses computeHeirScore() exactly as the Dynasty panel's own ranked
+   list already does — best living, non-child, non-deceased candidate,
+   or null if the line has genuinely run out. */
+function pickBestHeirCandidate(){
+  let best = null, bestScore = -1;
+  for(const s of survivors){
+    if(s.health <= 0 || s.deceased || s.stage === 'child') continue;
+    const score = computeHeirScore(s);
+    if(score > bestScore){ bestScore = score; best = s; }
+  }
+  return best;
+}
+
+/* Fires once, from killSurvivor() when the deceased held isFounder.
+   Prefers the founder's own designated preferredHeirId if it's still a
+   valid living choice; falls back to the best-scoring candidate
+   otherwise. Reputation and loyalty both reset for the incoming
+   founder's own era — they represent trust and character built toward
+   a specific leader, not something that should silently carry over to
+   whoever succeeds them; political capital is left alone, since it
+   reads as the settlement's own standing, not any one founder's
+   personal one. If no heir exists at all, the ranch's line ends —
+   handled honestly (a real Chronicle entry, no fabricated recovery),
+   not with a full game-over screen this pass didn't build. */
+function handleFounderSuccession(oldFounder){
+  oldFounder.isFounder = false;
+  let heir = (preferredHeirId != null) ? survivors.find(s => s.id === preferredHeirId && s.health > 0 && !s.deceased && s.stage !== 'child') : null;
+  if(!heir) heir = pickBestHeirCandidate();
+  if(!heir){
+    flashAlert(`${oldFounder.name} ${oldFounder.surname}'s line ends. No heir remains.`);
+    logChronicle('succession', `The founder's line ends`, `no heir remained to take up the mantle after ${oldFounder.name} ${oldFounder.surname}, remembered as ${oldFounder.epithetAtDeath}`);
+    return;
+  }
+  const heirMinistry = ministers.find(m => m.survivorId === heir.id);
+  if(heirMinistry) dismissMinister(heirMinistry.role); // the founder can never hold a ministry [Phase 12b amendment]
+  heir.isFounder = true;
+  preferredHeirId = null;
+  reputation = { compassionate:20, ruthless:20, builder:20, provider:20, honest:20 };
+  for(const s of survivors) if(s.health > 0 && !s.deceased && !s.isFounder) s.loyaltyToFounder = 50;
+  const fam = heir.familyId != null ? families.find(f => f.id === heir.familyId) : null;
+  if(fam) fam.headId = heir.id;
+  flashAlert(`${heir.name} ${heir.surname} takes up the mantle.`);
+  logChronicle('succession', `${heir.name} ${heir.surname} becomes the new founder`, `succeeding ${oldFounder.name} ${oldFounder.surname}, remembered as ${oldFounder.epithetAtDeath}`);
+}
+
+/* Old-age mortality — no original number exists for this, flagged same
+   as every other invented rate across this project. A small, rising
+   daily chance past 70, checked once a day rather than every frame. */
+const OLD_AGE_DEATH_START = 70;
+const OLD_AGE_DEATH_CHANCE_PER_YEAR_PAST = 0.0009;
+function updateMortality(){
+  if(!founded) return;
+  for(const c of survivors){
+    if(c.health <= 0 || c.deceased || c.age < OLD_AGE_DEATH_START) continue;
+    const chance = (c.age - OLD_AGE_DEATH_START) * OLD_AGE_DEATH_CHANCE_PER_YEAR_PAST;
+    if(survivorRng() < chance) killSurvivor(c, 'old age');
+  }
+}
+
+/* =========================================================
    === FACTIONS & CHALLENGER BUILDUP (Phase 12c) ===
    Five exact IDs from the original. Faction membership is computed
    live from each survivor's traits (never stored — traits are fixed at
@@ -3504,6 +3884,36 @@ function resolveCouncilResponse(kind){
       flashAlert('The attempt to crush the challenger backfires.');
       logChronicle('event', 'Council Vote: Crush the Challenger fails', `-18 prestige, -15 ranch loyalty`);
     }
+  } else if(kind === 'negotiateTerritory'){
+    // [Requested addition] the plan's own fifth mention — "expanded...
+    // including as something negotiated at a Phase 12d council session,
+    // not just bought with resources" — flagged as new scope, since the
+    // plan's four fixed responses never include this as a numbered
+    // option; no original cost/effect numbers exist for it either.
+    // Spends political capital instead of wood/stone (13a's own
+    // resource-purchase path stays untouched, this is the alternate
+    // route the plan explicitly asked for) — capital's first real
+    // spend since it started accruing in 12d with nothing to draw it
+    // down. Picking this instead of actually addressing the challenger
+    // isn't free: it's a real tradeoff, not a bypass — the contest goes
+    // unresolved this session, so the challenger reads that as room to
+    // keep pushing.
+    if(!territory || territoryAtMax()){
+      flashAlert('There is no more territory to negotiate for.');
+      return;
+    }
+    if(politicalCapital < TERRITORY_NEGOTIATION_CAPITAL_COST){
+      flashAlert('Not enough political capital to negotiate territory.');
+      return;
+    }
+    politicalCapital -= TERRITORY_NEGOTIATION_CAPITAL_COST;
+    territory.halfW = Math.min(TERRITORY_MAX_HALF_TILES*CONFIG.TILE, territory.halfW + TERRITORY_EXPAND_STEP_TILES*CONFIG.TILE);
+    territory.halfH = Math.min(TERRITORY_MAX_HALF_TILES*CONFIG.TILE, territory.halfH + TERRITORY_EXPAND_STEP_TILES*CONFIG.TILE);
+    territoryExpansions++;
+    if(challenger) challenger.challengerBuildup = (challenger.challengerBuildup||0) + 5;
+    ranchWideLoyalty(-3);
+    flashAlert('The council grants more land — but the challenge itself goes unanswered.');
+    logChronicle('event', 'Council Vote: Territory negotiated', `territory expanded, ${TERRITORY_NEGOTIATION_CAPITAL_COST} political capital spent`);
   }
   closeCouncilModal();
 }
@@ -3749,6 +4159,12 @@ function updateResourceBar(){
    than only at resource-mutation points. */
 function updateClockHUD(){
   const panel = document.getElementById('clockpanel');
+  // [Phase 15] speed controls share the clock's own founded-gating —
+  // same reasoning as clockpanel itself: nothing to control before a
+  // settlement exists.
+  const speedPanel = document.getElementById('speedcontrols');
+  if(speedPanel) speedPanel.hidden = !founded;
+  if(founded) syncSpeedButtons();
   if(!panel) return;
   if(!founded){ panel.hidden = true; return; }
   panel.hidden = false;
@@ -3967,7 +4383,13 @@ function updatePassiveProduction(dt){
   for(const b of buildings){
     const def = BUILDING_TYPES[b.type];
     if(!b.isComplete || !def || !def.produces) continue;
-    resources[def.produces.resource] += (def.produces.perDay / DAY_LENGTH_SECONDS) * dt;
+    // [Phase 13c] Tool Tempering doubles any tools-producing passive
+    // building — currently only Workbench, but written generically
+    // over `def.produces.resource==='tools'` the same way this whole
+    // function is already generic over any producer, so a future
+    // second tools producer picks up the bonus with no new code.
+    const mult = (def.produces.resource === 'tools' && unlockedTech.has('toolTempering')) ? 2 : 1;
+    resources[def.produces.resource] += (def.produces.perDay * mult / DAY_LENGTH_SECONDS) * dt;
   }
 }
 
@@ -5069,7 +5491,7 @@ function renderBuildMenu(){
       ${SETTLEMENT_TIER_LABEL[tier]}${nextTier ? ` — next: ${SETTLEMENT_TIER_LABEL[nextTier]} (pop ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].pop}, ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].buildings} buildings${SETTLEMENT_TIER_REQUIREMENTS[nextTier].houses>1?`, ${SETTLEMENT_TIER_REQUIREMENTS[nextTier].houses} Houses`:''})` : ' — top tier reached'}
     </div>
   `;
-  menu.innerHTML = tierHeaderHtml + Object.values(BUILDING_TYPES).filter(def => buildingUnlockedAtCurrentTier(def.id)).map(def=>{
+  menu.innerHTML = tierHeaderHtml + Object.values(BUILDING_TYPES).filter(def => buildingUnlockedAtCurrentTier(def.id) && buildingUnlockedByTech(def.id)).map(def=>{
     // [Phase 9] generalized alongside tryPlaceBuilding's fix above — same
     // wood/stone-only gap, same reason.
     const afford = Object.keys(def.cost).every(k => (resources[k]||0) >= def.cost[k]);
@@ -5119,7 +5541,7 @@ function flashBuildStatus(msg){
    in the group before flipping its own. Kept as one shared list (rather
    than repeating the six ids inline six times) so a future seventh panel
    only has to be added here once. */
-const TOGGLE_MENU_IDS = ['buildmenu','jobsmenu','livestockmenu','chroniclemenu','dynastymenu','ministersmenu','lawsmenu'];
+const TOGGLE_MENU_IDS = ['buildmenu','jobsmenu','livestockmenu','chroniclemenu','dynastymenu','ministersmenu','lawsmenu','researchmenu','expeditionsmenu','leadershipmenu'];
 function closeOtherMenus(exceptId){
   for(const id of TOGGLE_MENU_IDS){
     if(id === exceptId) continue;
@@ -5299,7 +5721,7 @@ function ministerReportLine(m){
   return `${name} reports frustration — requests going unanswered.`;
 }
 function eligibleMinisterCandidates(roleId){
-  return survivors.filter(s => s.health>0 && s.stage!=='child' && !s.isFounder &&
+  return survivors.filter(s => s.health>0 && s.stage!=='child' && !s.isFounder && !s.onExpedition &&
     !ministers.some(mm => mm.survivorId===s.id && mm.role!==roleId));
 }
 function renderMinistersPanel(){
@@ -5436,6 +5858,291 @@ document.getElementById('lawsToggleBtn').addEventListener('click', ()=>{
   closeOtherMenus('lawsmenu');
   menu.hidden = !opening;
   if(!menu.hidden) renderLawsPanel();
+});
+
+/* =========================================================
+   === RESEARCH PANEL (Phase 13c) ===
+   Same shape as the Laws panel just above: a toggle button opens a
+   panel, re-rendered on every open and after every research action.
+   Nodes render grouped by `path` so the two branches and the capstone
+   read as a tree even in a plain top-to-bottom list. */
+function renderResearchPanel(){
+  const menu = document.getElementById('researchmenu');
+  const pathLabel = { fortification:'Fortification', toolcraft:'Toolcraft', capstone:'Converges from both paths' };
+  const order = ['reinforcedFencing','toolTempering','ranchIngenuity'];
+  let lastPath = null;
+  const nodesHtml = order.map(id => {
+    const node = TECH_TREE[id];
+    const done = unlockedTech.has(id);
+    const locked = !done && !techPrereqsMet(id);
+    const afford = !done && !locked && canAffordTech(id);
+    const costHtml = Object.keys(node.cost).filter(k => node.cost[k]).map(k => `<span class="dot ${k}"></span>${node.cost[k]}`).join('');
+    const prereqNames = node.prereq.map(p => TECH_TREE[p].name).join(' + ');
+    const pathHeaderHtml = node.path !== lastPath ? `<div class="tech-path-label">${pathLabel[node.path]}</div>` : '';
+    lastPath = node.path;
+    const statusHtml = done
+      ? `<div class="minister-meta">Researched</div>`
+      : locked
+        ? `<div class="minister-meta">Requires: ${prereqNames}</div>`
+        : `<div class="minister-actions">
+             <button class="mini-btn tech-research-btn" data-tech="${id}" ${afford?'':'disabled'}>Research</button>
+           </div>`;
+    return `
+      ${pathHeaderHtml}
+      <div class="law-domain-card${(locked&&!done)?' tech-locked':''}">
+        <div class="minister-title">${node.name}${done?' ✓':''}</div>
+        <div class="minister-meta">${node.desc}</div>
+        <div class="minister-meta">${costHtml}</div>
+        ${statusHtml}
+      </div>
+    `;
+  }).join('');
+  menu.innerHTML = nodesHtml;
+  menu.querySelectorAll('.tech-research-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.disabled) return;
+      researchTech(btn.dataset.tech);
+      renderResearchPanel();
+      renderBuildMenu(); // a newly-unlocked Stone Wall should appear immediately
+    });
+  });
+}
+document.getElementById('researchToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('researchmenu');
+  const opening = menu.hidden;
+  closeOtherMenus('researchmenu');
+  menu.hidden = !opening;
+  if(!menu.hidden) renderResearchPanel();
+});
+
+/* =========================================================
+   === EXPEDITIONS PANEL (Phase 14) ===
+   Same toggle-button/panel shape as Laws/Research above. The roster
+   picker reuses the founding charter's own click-to-toggle-a-Set
+   idiom (see renderCompanionGrid/selectedCompanionIdx) rather than a
+   second, differently-shaped multi-select.
+
+   Leader selection is auto-derived from whoever's picked, not a
+   separate radio control — whichever selected member scores highest
+   on the same weighted formula the forecast itself uses becomes
+   leader ("the most capable takes charge"). No original UI to check
+   this against, so this is a deliberate simplification, not a port. */
+let expSelectedKind = 'scavenge';
+let expSelectedIds = new Set();
+
+function expMemberScore(s){ return s.skills.farming*1.3 + s.skills.building*0.6 + s.skills.combat*0.6; }
+function expAutoLeaderId(){
+  let best = null, bestScore = -1;
+  for(const id of expSelectedIds){
+    const s = survivors.find(ss => ss.id === id);
+    if(!s) continue;
+    const score = expMemberScore(s);
+    if(score > bestScore){ bestScore = score; best = id; }
+  }
+  return best;
+}
+
+function renderExpeditionsPanel(){
+  const menu = document.getElementById('expeditionsmenu');
+  const eligible = survivors.filter(s => s.health > 0 && !s.deceased && s.stage !== 'child' && !s.onExpedition);
+  // dropped survivors who left the eligible pool since last render (e.g. one just took an injury elsewhere)
+  for(const id of Array.from(expSelectedIds)) if(!eligible.some(s => s.id === id)) expSelectedIds.delete(id);
+
+  const kindTabsHtml = Object.values(EXPEDITION_KINDS).map(k =>
+    `<div class="exp-kind-tab${k.id===expSelectedKind?' active':''}" data-kind="${k.id}">${k.name}</div>`
+  ).join('');
+
+  const rosterHtml = eligible.map(s => `
+    <button class="assign-row${expSelectedIds.has(s.id)?' current':''}" data-survivor="${s.id}">
+      <span class="assign-row-dot" style="background:${s.color}"></span>
+      <span class="assign-row-info">
+        <span class="assign-row-name">${s.name} ${s.surname}</span>
+        <span class="assign-row-status">forage ${Math.round(s.skills.farming)} · build ${Math.round(s.skills.building)} · combat ${Math.round(s.skills.combat)}</span>
+      </span>
+    </button>
+  `).join('') || `<div class="minister-meta" style="padding:8px;">Nobody available to send right now.</div>`;
+
+  const leaderId = expAutoLeaderId();
+  const leader = leaderId != null ? survivors.find(s => s.id === leaderId) : null;
+  const memberIds = Array.from(expSelectedIds);
+  const forecast = memberIds.length ? computeExpeditionForecast(expSelectedKind, memberIds) : null;
+  const afford = forecast ? (resources.food||0) >= forecast.supplyConsumption : false;
+
+  const forecastHtml = forecast ? `
+    <div class="exp-forecast">
+      <div class="row"><span>Leader</span><span>${leader ? leader.name+' '+leader.surname : '—'}</span></div>
+      <div class="row"><span>Success chance</span><span>${forecast.successChance}%</span></div>
+      <div class="row"><span>Danger level</span><span>${forecast.dangerLevel}</span></div>
+      <div class="row"><span>Team strength</span><span>${forecast.teamStrength}</span></div>
+      <div class="row"><span>Supplies needed</span><span><span class="dot food"></span>${forecast.supplyConsumption}${afford?'':' (not enough food)'}</span></div>
+      <div class="row"><span>Expected return</span><span>${forecast.estimatedReturnDays} days</span></div>
+    </div>
+  ` : `<div class="minister-meta" style="padding:4px 2px;">Pick at least one member to see the forecast.</div>`;
+
+  const activeHtml = expeditions.filter(e => e.status === 'away').map(e => {
+    const kind = EXPEDITION_KINDS[e.kind];
+    const l = survivors.find(s => s.id === e.leaderId);
+    const daysLeft = Math.max(0, e.returnDay - time.totalDays);
+    return `<div class="law-domain-card">
+      <div class="minister-title">${kind.name} — ${e.memberIds.length} member${e.memberIds.length===1?'':'s'}</div>
+      <div class="minister-meta">Led by ${l?l.name+' '+l.surname:'—'} · back in ${daysLeft} day${daysLeft===1?'':'s'}</div>
+    </div>`;
+  }).join('');
+
+  const resolvedHtml = expeditions.filter(e => e.status === 'resolved').slice(-5).reverse().map(e => `
+    <div class="law-domain-card">
+      <div class="minister-title">${e.result.title}</div>
+      <div class="minister-meta">${e.result.highlights.join(' ')}</div>
+      <div class="minister-actions"><button class="mini-btn exp-dismiss-btn" data-exp="${e.id}">Dismiss</button></div>
+    </div>
+  `).join('');
+
+  menu.innerHTML = `
+    <div class="exp-kind-tabs">${kindTabsHtml}</div>
+    <div class="minister-meta" style="padding:2px 2px 6px;">${EXPEDITION_KINDS[expSelectedKind].desc}</div>
+    <div class="exp-roster-list">${rosterHtml}</div>
+    ${forecastHtml}
+    <div class="minister-actions" style="margin:6px 0 10px;">
+      <button class="mini-btn exp-depart-btn" ${(memberIds.length && afford)?'':'disabled'}>Depart</button>
+    </div>
+    ${activeHtml ? `<div class="tech-path-label">Away</div>${activeHtml}` : ''}
+    ${resolvedHtml ? `<div class="tech-path-label">Recent returns</div>${resolvedHtml}` : ''}
+  `;
+
+  menu.querySelectorAll('.exp-kind-tab').forEach(tab => {
+    tab.addEventListener('click', () => { expSelectedKind = tab.dataset.kind; renderExpeditionsPanel(); });
+  });
+  menu.querySelectorAll('.exp-roster-list .assign-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.survivor, 10);
+      if(expSelectedIds.has(id)) expSelectedIds.delete(id); else expSelectedIds.add(id);
+      renderExpeditionsPanel();
+    });
+  });
+  const departBtn = menu.querySelector('.exp-depart-btn');
+  if(departBtn) departBtn.addEventListener('click', () => {
+    if(departBtn.disabled) return;
+    const lid = expAutoLeaderId();
+    if(lid == null) return;
+    departExpedition(expSelectedKind, lid, Array.from(expSelectedIds).filter(id => id !== lid));
+    expSelectedIds = new Set();
+    renderExpeditionsPanel();
+  });
+  menu.querySelectorAll('.exp-dismiss-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.exp, 10);
+      expeditions = expeditions.filter(e => e.id !== id);
+      renderExpeditionsPanel();
+    });
+  });
+}
+document.getElementById('expeditionsToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('expeditionsmenu');
+  const opening = menu.hidden;
+  closeOtherMenus('expeditionsmenu');
+  menu.hidden = !opening;
+  if(!menu.hidden) renderExpeditionsPanel();
+});
+
+/* =========================================================
+   === LEADERSHIP DASHBOARD (Phase 15) ===
+   Consolidates three things that already existed but were scattered
+   across separate panels — pending minister worker-requests (Ministers
+   panel), pending marriage proposals (Dynasty panel), and a live
+   preview of the next council vote (Phase 12d's own contested-check
+   and success-chance functions, just surfaced here rather than only
+   learned about when the vote actually fires) — into the one "what
+   needs my attention as leader" screen the plan asks for. Every action
+   button here calls the exact same resolution functions the original
+   panels use (resolveMinisterRequest, resolveMarriageProposal); this
+   is a second place to see and act on the same real data, not a
+   parallel copy of it. */
+function renderLeadershipPanel(){
+  const menu = document.getElementById('leadershipmenu');
+
+  // --- Next council vote preview ---
+  const YEAR_LENGTH = DAYS_PER_SEASON * SEASON_LIST.length;
+  const daysIntoYear = time.totalDays % YEAR_LENGTH;
+  const daysUntilVote = YEAR_LENGTH - daysIntoYear;
+  const contested = families.length >= 1 ? isCouncilContested() : false;
+  const challenger = contested ? currentChallengerFamily() : null;
+  const odds = Math.round(councilSuccessChance() * 100);
+  const voteHtml = `
+    <div class="lead-vote-card">
+      <div class="row"><span>Next council vote</span><span>${daysUntilVote} day${daysUntilVote===1?'':'s'}</span></div>
+      <div class="row"><span>Current outlook</span><span>${families.length < 2 ? 'no rival Houses yet' : (contested ? `contested${challenger?' — '+familyName(challenger.id):''}` : 'no serious challenge expected')}</span></div>
+      ${contested ? `<div class="row"><span>Your odds if it comes to a response</span><span>${odds}%</span></div>` : ''}
+      <div class="row"><span>Authority</span><span>${authorityValue()}</span></div>
+      <div class="row"><span>Political capital</span><span>${Math.round(politicalCapital)}</span></div>
+    </div>
+  `;
+
+  // --- Pending minister requests, consolidated across all roles ---
+  const pendingMinisterReqs = ministerRequests.filter(r => r.status==='pending' || r.status==='postponed');
+  const reqHtml = pendingMinisterReqs.length ? pendingMinisterReqs.map(req => {
+    const m = ministers.find(mm => mm.id === req.ministerId);
+    const roleName = m ? MINISTER_ROLES[m.role].name : req.role;
+    return `
+      <div class="minister-card">
+        <div class="minister-title">${roleName}${m?' — '+survivorName(m.survivorId):''}</div>
+        <div class="minister-meta">requesting ${req.requestedWorkers} worker${req.requestedWorkers===1?'':'s'} — ${req.reason}${req.status==='postponed'?' · postponed':''}</div>
+        <div class="minister-actions">
+          <button class="mini-btn lead-minister-decide" data-id="${req.id}" data-decision="approve">Approve</button>
+          ${req.requestedWorkers>1 ? `<button class="mini-btn secondary lead-minister-decide" data-id="${req.id}" data-decision="partial">Approve Partial</button>` : ''}
+          <button class="mini-btn secondary lead-minister-decide" data-id="${req.id}" data-decision="reject">Reject</button>
+          <button class="mini-btn secondary lead-minister-decide" data-id="${req.id}" data-decision="postpone">Postpone</button>
+        </div>
+      </div>
+    `;
+  }).join('') : `<div class="row" style="padding:4px 2px;">no pending requests</div>`;
+
+  // --- Pending marriage proposals ---
+  const pendingProposals = marriageProposals.filter(p => p.status === 'pending' || p.status === 'postponed');
+  const proposalsHtml = pendingProposals.length ? pendingProposals.map(p => {
+    const a = survivors.find(s=>s.id===p.survivorAId), b = survivors.find(s=>s.id===p.survivorBId);
+    if(!a || !b) return '';
+    return `
+      <div class="proposal-row">
+        <div class="pr-title">${a.name} ${a.surname} & ${b.name} ${b.surname}${p.status==='postponed'?' (postponed)':''}</div>
+        <div class="pr-meta">compatibility ${Math.round(p.compatibility)} · family approval ${Math.round(p.familyApproval)}</div>
+        <div class="pr-actions">
+          <button class="mini-btn lead-proposal-decide" data-id="${p.id}" data-decision="approved">Approve</button>
+          <button class="mini-btn secondary lead-proposal-decide" data-id="${p.id}" data-decision="rejected">Reject</button>
+          <button class="mini-btn secondary lead-proposal-decide" data-id="${p.id}" data-decision="postponed">Postpone</button>
+        </div>
+      </div>
+    `;
+  }).join('') : `<div class="row" style="padding:4px 2px;">no pending proposals</div>`;
+
+  menu.innerHTML = `
+    <div class="lead-section-label">Next Council Vote</div>
+    ${voteHtml}
+    <div class="lead-section-label">Pending Minister Requests</div>
+    ${reqHtml}
+    <div class="lead-section-label">Pending Marriage Proposals</div>
+    ${proposalsHtml}
+  `;
+
+  menu.querySelectorAll('.lead-minister-decide').forEach(btn => {
+    btn.addEventListener('click', () => {
+      resolveMinisterRequest(parseInt(btn.dataset.id, 10), btn.dataset.decision);
+      renderLeadershipPanel();
+    });
+  });
+  menu.querySelectorAll('.lead-proposal-decide').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = marriageProposals.find(x => x.id === parseInt(btn.dataset.id, 10));
+      if(p) resolveMarriageProposal(p, btn.dataset.decision);
+      renderLeadershipPanel();
+    });
+  });
+}
+document.getElementById('leadershipToggleBtn').addEventListener('click', ()=>{
+  const menu = document.getElementById('leadershipmenu');
+  const opening = menu.hidden;
+  closeOtherMenus('leadershipmenu');
+  menu.hidden = !opening;
+  if(!menu.hidden) renderLeadershipPanel();
 });
 
 /* =========================================================
@@ -5638,6 +6345,9 @@ function renderDynastyMenu(){
   ` : '';
 
   menu.innerHTML = `
+    <div class="minister-actions" style="margin-bottom:8px;">
+      <button class="mini-btn" id="openFamilyTreeBtn">View Family Tree</button>
+    </div>
     ${rows}
     ${eligible.length >= 2 ? `
     <form id="arrangeMarriageForm">
@@ -5650,6 +6360,8 @@ function renderDynastyMenu(){
     ${heirsHtml}
     ${housesHtml}
   `;
+  const familyTreeBtn = menu.querySelector('#openFamilyTreeBtn');
+  if(familyTreeBtn) familyTreeBtn.addEventListener('click', openFamilyTree);
 
   menu.querySelectorAll('.pr-decide').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -5703,7 +6415,7 @@ document.getElementById('dynastyToggleBtn').addEventListener('click', ()=>{
    the title/logo, and the resources HUD (nested inside #titlebar) the
    same way the existing Back to Menu flow already does — rather than
    relying on the overlay's opacity alone — and restores them on close. */
-const UI_CHROME_HIDE_IDS = ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','zoomcontrols','titlebar','settingsbar'];
+const UI_CHROME_HIDE_IDS = ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','researchbar','expeditionsbar','leadershipbar','buildbar','zoomcontrols','titlebar','settingsbar'];
 const settingsMenu = document.getElementById('settingsmenu');
 function openSettingsMenu(){
   settingsMenu.removeAttribute('hidden');
@@ -5775,6 +6487,7 @@ document.getElementById('terrainGuideBtn').addEventListener('click', ()=>{
 document.getElementById('terrainCloseBtn').addEventListener('click', ()=>{
   document.getElementById('terrainModal').hidden = true;
 });
+document.getElementById('familyTreeCloseBtn').addEventListener('click', closeFamilyTree);
 
 /* =========================================================
    === ARRIVAL MODAL BUTTONS (Phase 10) ===
@@ -5802,8 +6515,18 @@ function renderCouncilModal(){
     <div class="row">your House: ${founderFamily ? founderFamily.name : '—'} · prestige ${founderFamily ? Math.round(founderFamily.prestige) : 0}</div>
     ${challenger ? `<div class="row">${challenger.name} · prestige ${Math.round(challenger.prestige)} · buildup ${Math.round(challenger.challengerBuildup||0)}</div>` : ''}
     <div class="row">authority: ${authorityRank(authorityValue())} (${Math.round(authorityValue())})</div>
+    <div class="row">political capital: ${Math.round(politicalCapital)}</div>
   `;
-  document.getElementById('councilResponses').innerHTML = COUNCIL_RESPONSE_INFO.map(r => `
+  // [Requested addition] a fifth response, only offered when it's
+  // actually a real option (territory exists and isn't already
+  // maxed) — matches the plan's own "expanded... including as
+  // something negotiated at a council session" line, which the
+  // original four fixed responses never covered.
+  const responses = COUNCIL_RESPONSE_INFO.slice();
+  if(territory && !territoryAtMax()){
+    responses.push({ kind:'negotiateTerritory', label:'Negotiate Territory', cost:`${TERRITORY_NEGOTIATION_CAPITAL_COST} political capital`, desc:'Press for more land instead of settling the challenge. The land is real; the challenger reads your distraction as room to keep pushing.' });
+  }
+  document.getElementById('councilResponses').innerHTML = responses.map(r => `
     <button class="mini-btn secondary council-response-btn" data-kind="${r.kind}" style="text-align:left; white-space:normal;">
       <strong>${r.label}</strong> — ${r.cost}<br><span style="font-weight:400; opacity:0.85; font-size:0.9em;">${r.desc}</span>
     </button>
@@ -6538,7 +7261,11 @@ function createSurvivor(tx, ty, opts, colorIdx){
     pregnant: false,
     pregnancyStartDay: null,
     pregnancyFatherId: null,
-    lastBirthDay: null
+    lastBirthDay: null,
+    // SCHEMA v14: expedition state — see the Expeditions section's own
+    // comments. [Phase 14]
+    onExpedition: false,
+    disabled: false
   };
 }
 
@@ -6840,7 +7567,7 @@ foundBtn.addEventListener('click', () => {
   // bottom-left slot next to the roster. Its visibility is entirely
   // selection-driven now (see syncBottomLeftPanel()) — it manages its
   // own hidden attribute and never needs a manual reveal.
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','researchbar','expeditionsbar','leadershipbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
   // [Phase 7] the calendar starts now, not at page load — matches the
   // original's own foundingPhase guard (decayNeeds etc. skip entirely
   // until founding is confirmed there too).
@@ -6856,6 +7583,24 @@ foundBtn.addEventListener('click', () => {
   // dry-spell safety net rather than a starting-line guarantee. Caught
   // via a direct test before this ever reached a real player.
   lastArrivalDay = time.totalDays;
+  // [Phase 13a] territory starts centered on the founder's own spawn
+  // point, not the map's geometric center — see the section's own
+  // comment for why that distinction matters even though they often
+  // coincide.
+  const founderSpawn = survivors.find(s => s.isFounder);
+  if(founderSpawn) initTerritory(founderSpawn.wx, founderSpawn.wy);
+  // [Phase 13b] a fresh founding starts on untrodden ground — matters
+  // when New Game is chosen from the Main Menu after an earlier game
+  // already wore trails into this same page session's wornPaths Map.
+  wornPaths.clear();
+  // [Phase 13c] same reasoning — a new settlement hasn't researched
+  // anything yet, regardless of what an earlier game in this session
+  // unlocked.
+  unlockedTech.clear();
+  // [Phase 14] same reasoning — no expedition history carries over
+  // into a fresh founding.
+  expeditions.length = 0;
+  expeditionIdCounter = 0;
 });
 
 renderFounderBgGrid();
@@ -6917,7 +7662,7 @@ continueBtn.addEventListener('click', async () => {
   if(continueBtn.disabled) return;
   tryEnterFullscreen();
   mainMenuScreen.setAttribute('hidden','');
-  const ok = await performLoad();
+  const ok = await performLoad(mostRecentSlotId || 'slot1');
   if(!ok){
     // fallback: no usable save after all (deleted/corrupt mid-flight) —
     // don't strand the player on a blank canvas, send them to the charter.
@@ -6965,7 +7710,7 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   const ok = await confirmDialog('Any progress since your last Save will be lost.', 'Return to the main menu?');
   if(!ok) return;
   closeSettingsMenu();
-  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
+  ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','researchbar','expeditionsbar','leadershipbar','buildbar','settingsbar','zoomcontrols','infopanel','titlebar']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
   ['assignModal','giftModal','arrivalModal','clockpanel']
     .forEach(id => document.getElementById(id).setAttribute('hidden',''));
@@ -6974,28 +7719,137 @@ document.getElementById('backToMenuBtn').addEventListener('click', async () => {
   refreshContinueMeta();
 });
 
-// Populate the Continue button from IndexedDB meta (slot1 only — this
-// build has a single save slot). Left disabled with an explanatory note
-// until we know a save actually exists, rather than guessing. Named (not
-// a bare IIFE) so Back to Menu can re-run it after a mid-game return.
+// [Phase 15] Continue now picks whichever of the 4 slots (3 manual +
+// autosave) was actually saved to most recently, rather than a
+// hardcoded slot1 — autosave included, since from the player's
+// perspective "continue where I left off" should win even if the most
+// recent thing that happened was an automatic save, not a manual one.
+// mostRecentSlotId is set here and read by continueBtn's own handler
+// below. Left disabled with an explanatory note until we know a save
+// actually exists, rather than guessing. Named (not a bare IIFE) so
+// Back to Menu can re-run it after a mid-game return.
+let mostRecentSlotId = null;
 async function refreshContinueMeta(){
   try{
     const saves = await RanchDB.listSaves();
-    const slot1 = saves.find(s => s.slotId === 'slot1');
-    if(slot1){
+    const newest = saves.reduce((best, s) => (!best || (s.timestamp||0) > (best.timestamp||0)) ? s : best, null);
+    if(newest){
+      mostRecentSlotId = newest.slotId;
       continueBtn.disabled = false;
-      const when = slot1.timestamp ? new Date(slot1.timestamp).toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-      continueMeta.textContent = `${slot1.survivorCount||0} survivor${slot1.survivorCount===1?'':'s'} · ${slot1.settlementTier||'camp'}${when?' · saved '+when:''}`;
+      const when = newest.timestamp ? new Date(newest.timestamp).toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      const auto = newest.slotId === AUTOSAVE_SLOT_ID ? ' (autosave)' : '';
+      continueMeta.textContent = `${newest.survivorCount||0} survivor${newest.survivorCount===1?'':'s'} · ${newest.settlementTier||'camp'}${when?' · saved '+when:''}${auto}`;
     } else {
+      mostRecentSlotId = null;
       continueBtn.disabled = true;
       continueMeta.textContent = 'no saved ranch yet';
     }
   } catch(err){
     console.error(err);
+    mostRecentSlotId = null;
     continueMeta.textContent = 'no saved ranch yet';
   }
 }
 refreshContinueMeta();
+
+/* =========================================================
+   === SLOT PICKER (Phase 15) ===
+   One modal, two modes. 'save' lets the player choose one of the 3
+   manual slots to write to (confirming before an overwrite) — the
+   autosave slot is listed for visibility but is deliberately not
+   clickable here, same reasoning as the comment on SAVE_SLOT_IDS
+   above. 'load' lets the player load any occupied slot, autosave
+   included, and delete a manual save they no longer want. */
+async function openSlotPicker(mode){
+  const modal = document.getElementById('slotPickerModal');
+  const panel = document.getElementById('slotPickerPanel');
+  panel.dataset.mode = mode;
+  document.getElementById('slotPickerTitle').textContent = mode === 'save' ? 'Save Game' : 'Load Game';
+  document.getElementById('slotPickerSub').textContent = mode === 'save'
+    ? 'Choose a slot to save to. Autosave updates on its own and can\'t be overwritten here.'
+    : 'Choose a save to load.';
+  modal.removeAttribute('hidden');
+  await renderSlotPicker();
+}
+
+async function renderSlotPicker(){
+  const list = document.getElementById('slotPickerList');
+  const mode = document.getElementById('slotPickerPanel').dataset.mode;
+  let saves = [];
+  try{ saves = await RanchDB.listSaves(); } catch(err){ console.error(err); }
+  const byId = {};
+  for(const s of saves) byId[s.slotId] = s;
+
+  const allIds = [...SAVE_SLOT_IDS, AUTOSAVE_SLOT_ID];
+  list.innerHTML = allIds.map(id => {
+    const meta = byId[id];
+    const isAuto = id === AUTOSAVE_SLOT_ID;
+    const label = isAuto ? 'Autosave' : `Slot ${id.slice(-1)}`;
+    // Bugfix (found via Playwright testing): clickability depends on
+    // mode and on whether the slot is occupied, not on occupancy
+    // alone — an EMPTY manual slot must still be clickable in Save
+    // mode (that's the whole point of picking one to write to), it's
+    // only in Load mode that emptiness itself makes a card inert.
+    // Autosave is the one slot that's never clickable in Save mode,
+    // occupied or not.
+    const clickable = isAuto ? (mode === 'load' && !!meta) : (mode === 'save' || !!meta);
+    const metaLine = meta
+      ? `${meta.survivorCount||0} survivor${meta.survivorCount===1?'':'s'} · ${meta.settlementTier||'camp'}${meta.generation?' · gen '+meta.generation:''}${meta.timestamp?' · '+new Date(meta.timestamp).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}`
+      : 'empty';
+    const deleteBtn = (!isAuto && meta && mode === 'load') ? `<button class="mini-btn secondary slot-delete-btn" data-delete="${id}">Delete</button>` : '';
+    return `<div class="slot-card${isAuto?' autosave':''}${clickable?'':' empty'}" data-slot="${clickable?id:''}">
+      <div class="slot-card-info"><span class="slot-card-name">${label}</span><span class="slot-card-meta">${metaLine}</span></div>
+      ${deleteBtn}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.slot-card[data-slot]').forEach(card => {
+    if(!card.dataset.slot) return;
+    card.addEventListener('click', async (e) => {
+      if(e.target.closest('.slot-delete-btn')) return; // let the delete button's own handler take it
+      const slotId = card.dataset.slot;
+      if(mode === 'save'){
+        const existing = byId[slotId];
+        if(existing){
+          const ok = await confirmDialog(`Overwrite the save in this slot? This can't be undone.`, 'Overwrite save?');
+          if(!ok) return;
+        }
+        await saveToSlot(slotId);
+        document.getElementById('slotPickerModal').setAttribute('hidden','');
+      } else {
+        document.getElementById('slotPickerModal').setAttribute('hidden','');
+        mainMenuScreen.setAttribute('hidden',''); // harmless if already hidden (loading from in-game Settings)
+        document.getElementById('settingsmenu').setAttribute('hidden','');
+        const ok = await performLoad(slotId);
+        if(!ok){
+          // shouldn't normally happen (card only showed as clickable
+          // because listSaves() found it), but don't strand the player
+          // on a blank canvas if it does — same fallback continueBtn's
+          // own handler uses.
+          charterScreen.removeAttribute('hidden');
+          goToCharterPage(1);
+        }
+      }
+    });
+  });
+
+  list.querySelectorAll('.slot-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const slotId = btn.dataset.delete;
+      const ok = await confirmDialog('Delete this save? This can\'t be undone.', 'Delete save?');
+      if(!ok) return;
+      try{ await RanchDB.deleteSave(slotId); } catch(err){ console.error(err); }
+      await renderSlotPicker();
+      refreshContinueMeta();
+    });
+  });
+}
+
+document.getElementById('slotPickerCloseBtn').addEventListener('click', () => {
+  document.getElementById('slotPickerModal').setAttribute('hidden','');
+});
+document.getElementById('loadGameBtn').addEventListener('click', () => { openSlotPicker('load'); });
 
 /* move camera to focus on a world position */
 function focusCameraOn(wx, wy){
@@ -7073,13 +7927,15 @@ const BELONGING_RADIUS_TILES = 4;
 const MOOD_BREAK_THRESHOLD = 40; // below this, mental breaks become possible
 
 // [Phase 8b] health/injury constants. HEALTH_DECAY_PER_DAY/HEALTH_RECOVER_PER_DAY
-// are exact to the original's ai.ts. MIN_HEALTH_FLOOR and INJURY_RECOVER_PER_DAY
-// have no original equivalent (the original runs starvation to real death) —
-// both are this rebuild's own knobs, following the user's explicit no-death-
-// this-phase decision. See updateSurvivorNeeds and the Incursions section below.
+// are exact to the original's ai.ts. MIN_HEALTH_FLOOR is kept as a real
+// "critical condition" threshold (used for flavor/urgency, e.g. by
+// whatever UI wants to flag someone as gravely hurt), but is no longer a
+// hard floor — the original ran starvation and injury to real, permanent
+// death, and [Phase 13, on direct request] this now does too. See
+// killSurvivor() below for the actual death handler.
 const HEALTH_DECAY_PER_DAY = 5;
 const HEALTH_RECOVER_PER_DAY = 4;
-const MIN_HEALTH_FLOOR = 15; // "severe injury" floor — never reaches 0 in 8b
+const MIN_HEALTH_FLOOR = 15; // "critical condition" reference point, not a floor anymore
 const INJURY_RECOVER_PER_DAY = 2;
 
 function moodLabel(c){
@@ -7226,14 +8082,12 @@ function updateSurvivorNeeds(c, dt){
   // decayNeeds()/ai.ts (flagged as a real gap by the Phase 3 cross-check,
   // explicitly deferred to Phase 8). -5/day whenever food OR water sits
   // under 8; +4/day whenever food, water, AND rest are all comfortably
-  // high (>50, >50, >40). One deliberate deviation from the original:
-  // this floors at MIN_HEALTH_FLOOR rather than running to 0 — the
-  // user's explicit call was "no death this early, cap at severe injury,"
-  // and that decision should hold here too, not just for the discrete
-  // breach-injury system below, or starvation becomes an undocumented
-  // back door to the same outcome the user just ruled out. [Phase 8b]
+  // high (>50, >50, >40). Runs all the way to real death now [Phase 13,
+  // on direct request] — starvation was always the original's own path
+  // to it, not an invented one.
   if(c.needs.food < 8 || c.needs.water < 8){
-    c.health = Math.max(MIN_HEALTH_FLOOR, c.health - (HEALTH_DECAY_PER_DAY/DAY_LENGTH_SECONDS)*dt);
+    c.health = Math.max(0, c.health - (HEALTH_DECAY_PER_DAY/DAY_LENGTH_SECONDS)*dt);
+    if(c.health <= 0) killSurvivor(c, 'starvation');
   } else if(c.needs.food > 50 && c.needs.water > 50 && c.needs.rest > 40){
     c.health = Math.min(100, c.health + (HEALTH_RECOVER_PER_DAY/DAY_LENGTH_SECONDS)*dt);
   }
@@ -7301,6 +8155,7 @@ function updateSurvivorMovement(c, dt){
     if(stepPx >= dist || dist < 0.5){
       c.wx = tpx; c.wy = tpy;
       c.tx = target.x; c.ty = target.y;
+      bumpWornPath(target.x, target.y); // [Phase 13b] wear the tile this step actually arrived on
       c.path.shift();
       if(c.path.length === 0){
         if(c.pendingBuildJob && !c.pendingBuildJob.isComplete && buildings.includes(c.pendingBuildJob)){
@@ -7338,6 +8193,13 @@ function updateSurvivors(dt){
   updateFarms(dt);
   updatePassiveProduction(dt);
   for(const c of survivors){
+    // [Phase 14] a survivor away on an expedition is deliberately
+    // skipped by every per-frame system below — no movement, no job
+    // assignment, no need decay, no housing tick. Their `supplies`
+    // cost (paid up front at departure) stands in for all of that
+    // while they're off-map; see resolveExpedition for what happens
+    // to them on return.
+    if(c.onExpedition) continue;
     tryResumeRole(c, dt);      // resumes an already-assigned survivor's role; never picks a first job on its own
     updateSurvivorMovement(c, dt);
     updateSurvivorBuilding(c, dt);
@@ -7518,6 +8380,44 @@ canvas.addEventListener('wheel', (e)=>{
 
 document.getElementById('zoomIn').addEventListener('click', ()=> setZoom(camera.zoom + CONFIG.ZOOM_STEP));
 document.getElementById('zoomOut').addEventListener('click', ()=> setZoom(camera.zoom - CONFIG.ZOOM_STEP));
+
+// [Phase 15] speed controls
+function syncSpeedButtons(){
+  const pauseBtn = document.getElementById('pauseToggleBtn');
+  if(pauseBtn) pauseBtn.classList.toggle('active', playerPaused);
+  document.querySelectorAll('.speed-opt').forEach(btn => {
+    btn.classList.toggle('active', !playerPaused && parseInt(btn.dataset.speed,10) === gameSpeed);
+  });
+}
+document.getElementById('pauseToggleBtn').addEventListener('click', () => {
+  playerPaused = !playerPaused;
+  syncSpeedButtons();
+});
+document.querySelectorAll('.speed-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    gameSpeed = parseInt(btn.dataset.speed, 10);
+    // Picking an explicit speed is an implicit "resume" — matches how
+    // every other game's speed control works, and avoids the confusing
+    // state of "I clicked 2× but nothing's moving" if the player had
+    // paused a moment earlier and forgot.
+    playerPaused = false;
+    syncSpeedButtons();
+  });
+});
+// [Bugfix] NOT calling syncSpeedButtons() here at top level — gameSpeed
+// and playerPaused are declared (let, further down the file) near
+// render()/gamePaused, and a `let` binding is in its temporal dead zone
+// from the top of the script until its own declaration line actually
+// runs. Calling a function that reads them this early, during the
+// script's own initial top-to-bottom execution, throws a TDZ
+// ReferenceError — and because this is unguarded top-level code (not
+// inside a function body executed later), that exception aborts the
+// REST of the script's top-level execution outright, silently breaking
+// everything declared after this point (the entire render loop
+// included). updateClockHUD() already calls syncSpeedButtons() every
+// frame once the game loop actually starts, which is well after the
+// whole script has finished loading — that's the one safe place for
+// the initial sync too, so no separate call is needed here at all.
 
 function setZoom(z){
   camera.zoom = Math.max(CONFIG.MIN_ZOOM, Math.min(CONFIG.MAX_ZOOM, z));
@@ -7902,14 +8802,19 @@ function wireAssignButtons(){
 }
 
 function renderSurvivorPanel(c){
-  // [Bugfix] the panel re-renders every 500ms while selected (the
-  // setInterval below, for live mood/needs updates) — replacing
-  // innerHTML resets scrollTop to 0 every single time, which meant any
-  // button below the fold (the new Assign Job row included) would
-  // scroll back out from under a real tap within half a second of it
-  // becoming visible. Save and restore scroll position around the
-  // re-render instead.
   const prevScrollTop = infoPanel.scrollTop;
+  // [Phase 13] a deceased survivor gets a memorial view instead of the
+  // normal living panel — needs/skills/jobs would all read as nonsense
+  // for someone with health locked at 0.
+  if(c.deceased){
+    infoPanel.innerHTML = `
+      <div class="title">${c.name} ${c.surname} †</div>
+      <div class="row" style="font-style:italic;">${c.deathCause}, day ${c.deathDay}</div>
+      <div class="row" style="font-weight:600;">Remembered as: ${c.epithetAtDeath}</div>
+    `;
+    infoPanel.scrollTop = prevScrollTop;
+    return;
+  }
   const traitsHtml = c.traits.map(t => `<span class="trait-tag" title="${t.desc}">${t.name}</span>`).join('');
   const topSkills = SKILL_LIST.slice().sort((a,b)=>c.skills[b]-c.skills[a]).slice(0,4);
   const skillsHtml = topSkills.map(s => `
@@ -8019,16 +8924,28 @@ function renderSurvivorPanel(c){
         return `<div class="row" style="font-style:italic; opacity:0.85;">owed to ${fam ? fam.name : 'a House'}: real influence — ${daysLeft} day${daysLeft===1?'':'s'} left</div>`;
       }).join('') : ''}
     `;
-    // [Phase 13] a live "how would they be remembered" preview — see
-    // computeEpithet()'s own comment for why this is a preview, not an
-    // event: no permanent-death trigger exists in this codebase to fire
-    // it on for real.
+    // [Phase 13] a live "how would they be remembered" preview — now
+    // also the real value frozen at actual death (see killSurvivor()'s
+    // epithetAtDeath), this is just the live version for a founder still
+    // very much alive.
     authorityHtml += `
       <div class="section-label">Legacy</div>
       <div class="row" style="font-style:italic;">if remembered today: ${computeEpithet(c)}</div>
       <div class="section-label">Settlement</div>
       <div class="row">${SETTLEMENT_TIER_LABEL[computeSettlementTier()]}</div>
     `;
+    // [Phase 13a] Territory — founder-only, same scope as the rest of
+    // this block.
+    if(territory){
+      const halfTiles = Math.round(territory.halfW/CONFIG.TILE);
+      const atMax = territoryAtMax();
+      const cost = territoryExpandCost();
+      authorityHtml += `
+        <div class="section-label">Territory</div>
+        <div class="row">${halfTiles*2} × ${halfTiles*2} tiles${atMax?' (maximum reached)':''}</div>
+        ${!atMax ? `<button class="mini-btn secondary territory-expand-btn">Expand Territory (${cost.wood} wood, ${cost.stone} stone)</button>` : ''}
+      `;
+    }
   }
 
   // [Phase 12c] every survivor, not just the founder — an ordinary
@@ -8097,6 +9014,11 @@ function renderSurvivorPanel(c){
     if(b) undesignateCook(b);
     updateInfoPanel();
   });
+  const territoryExpandBtn = document.querySelector('.territory-expand-btn');
+  if(territoryExpandBtn) territoryExpandBtn.addEventListener('click', () => {
+    if(!expandTerritory()) flashAlert('Not enough resources to expand territory.');
+    updateInfoPanel();
+  });
   document.querySelectorAll('.talk-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       requestTalk(c, btn.dataset.talk);
@@ -8155,11 +9077,628 @@ const ZOMBIE_FLAVOR_LINES = [
   "Something's wandering the old road again."
 ]; // exact to the original's FLAVOR_LINES
 
-/* Settlement center + outer wander band, in world-pixel space. No real
-   Territory exists yet (see header note) so this always takes the
-   original's own null-territory fallback: a band centered on the map's
-   center, radius 1/4 of the shorter map dimension. */
+/* =========================================================
+   === TERRITORY (Phase 13a) ===
+   A real, expandable center + half-width/half-height for the
+   settlement's claimed land — replacing the map-center/quarter-map-
+   dimension fallback zombieOuterBounds()/zombieInSettlement() have
+   used since Phase 8a, exactly as those functions' own comments
+   already anticipated ("No real Territory exists yet... this always
+   takes the original's own null-territory fallback"). Centered on the
+   founder's own spawn tile at founding, not the map's geometric
+   center, which is what actually determines the old fallback's numbers
+   too, but that's a coincidence of where founding happens to place the
+   camera — territory is meant to track the settlement, not the map.
+
+   No original numbers exist for the starting size or expansion cost —
+   flagged, same as every other invented number this project tracks.
+   The one number that *is* real and kept exact: ZOMBIE_OUTER_BUFFER_RATIO
+   (0.5, "band ~50% wider than the settlement radius") — expanding
+   territory below still pushes the zombie wander-band outward by
+   exactly that same ratio, automatically, since both functions read
+   from the same territory object. */
+const TERRITORY_INITIAL_HALF_TILES = 12;
+const TERRITORY_EXPAND_STEP_TILES = 4;
+const TERRITORY_EXPAND_BASE_COST = { wood:40, stone:20 };
+const TERRITORY_MAX_HALF_TILES = Math.floor(Math.min(CONFIG.MAP_W, CONFIG.MAP_H) / 2) - 4; // stay inside the generated map with a margin
+// [Requested addition] the council-negotiation path's own cost — see
+// resolveCouncilResponse's 'negotiateTerritory' branch. No original
+// number exists; picked to be a real, rare-to-afford chunk given
+// capital only grows +5/uncontested-year with nothing else to spend it
+// on yet.
+const TERRITORY_NEGOTIATION_CAPITAL_COST = 30;
+let territory = null; // { cx, cy, halfW, halfH } in world-pixel space, null until founding
+let territoryExpansions = 0;
+
+function initTerritory(centerWx, centerWy){
+  const r = TERRITORY_INITIAL_HALF_TILES * CONFIG.TILE;
+  territory = { cx: centerWx, cy: centerWy, halfW: r, halfH: r };
+  territoryExpansions = 0;
+}
+function territoryExpandCost(){
+  const mult = territoryExpansions + 1; // gets pricier each time — a real, if invented, escalation
+  return { wood: TERRITORY_EXPAND_BASE_COST.wood * mult, stone: TERRITORY_EXPAND_BASE_COST.stone * mult };
+}
+function territoryAtMax(){
+  if(!territory) return true;
+  return (territory.halfW/CONFIG.TILE) >= TERRITORY_MAX_HALF_TILES;
+}
+function expandTerritory(){
+  if(!territory || territoryAtMax()) return false;
+  const cost = territoryExpandCost();
+  if(resources.wood < cost.wood || resources.stone < cost.stone) return false;
+  resources.wood -= cost.wood; resources.stone -= cost.stone;
+  updateResourceBar();
+  territory.halfW = Math.min(TERRITORY_MAX_HALF_TILES*CONFIG.TILE, territory.halfW + TERRITORY_EXPAND_STEP_TILES*CONFIG.TILE);
+  territory.halfH = Math.min(TERRITORY_MAX_HALF_TILES*CONFIG.TILE, territory.halfH + TERRITORY_EXPAND_STEP_TILES*CONFIG.TILE);
+  territoryExpansions++;
+  logChronicle('event', 'Territory expanded', `now ${Math.round(territory.halfW/CONFIG.TILE)} tiles out from center`);
+  flashAlert('Territory expanded — the zombie wander-band moves outward with it.');
+  return true;
+}
+
+/* =========================================================
+   === WORN PATHS (Phase 13b) ===
+   Foot traffic wears visible dirt trails into well-used routes.
+   Kept as its own lightweight module *outside* gameState on purpose —
+   this is the exact "worn paths performance lesson" flagged up front
+   in the game plan's tech architecture section: a plain module-level
+   Map with its own bump counter, versioned in coarse buckets (steps
+   of 8, matching the original) so the render pass only ever needs a
+   quantized wear LEVEL per tile, not the raw step count. Persisted
+   separately in the save payload (see saveBtn's handler / performLoad
+   below) rather than as a gameState field — same reasoning as
+   territory just above. */
+const WORN_PATH_BUCKET_SIZE = 8;   // raw tile-crossings per visible wear level
+const WORN_PATH_MAX_LEVEL = 6;     // caps how deep/dark a trail can visually get
+const wornPaths = new Map();       // "tx,ty" -> raw crossing count (capped, see bumpWornPath)
+
+function wornPathKey(tx, ty){ return tx+','+ty; }
+
+/* True when a completed road-type building already occupies (tx,ty) —
+   shared with updateSurvivorMovement's own road-speed check just above
+   this function's call site, so both "does this tile get faster to
+   walk" and "does this tile still need a worn-dirt overlay" read the
+   same definition of "is a road." */
+function isRoadTile(tx, ty){
+  const b = buildingGrid.get(tx+','+ty);
+  return !!(b && b.isComplete && BUILDING_TYPES[b.type] && BUILDING_TYPES[b.type].speedMultiplier);
+}
+
+/* Called once per tile *crossing* (from updateSurvivorMovement, when a
+   survivor actually arrives at a new tile) — not per frame, and not
+   for a survivor merely standing/working on a tile. A road tile is
+   skipped: it's already the finished, mechanically-faster endpoint of
+   "worn ground," so layering a dirt tint under it would be redundant
+   and would show through a paved/gravel road's own art for no reason.
+   The raw counter is capped well past the last visible bucket so the
+   Map can't grow an unbounded number toward an already-maxed trail. */
+function bumpWornPath(tx, ty){
+  if(isRoadTile(tx, ty)) return;
+  const key = wornPathKey(tx, ty);
+  const raw = (wornPaths.get(key) || 0) + 1;
+  wornPaths.set(key, Math.min(raw, WORN_PATH_BUCKET_SIZE * WORN_PATH_MAX_LEVEL));
+}
+
+/* Quantized 0..WORN_PATH_MAX_LEVEL wear level the render pass reads —
+   bucketed in steps of 8 (matching the original) so a trail visibly
+   thickens in a handful of discrete jumps instead of the tint
+   imperceptibly shifting on every single footstep. */
+function wornPathLevel(tx, ty){
+  const raw = wornPaths.get(wornPathKey(tx, ty));
+  if(!raw) return 0;
+  return Math.min(WORN_PATH_MAX_LEVEL, Math.floor(raw / WORN_PATH_BUCKET_SIZE));
+}
+
+/* =========================================================
+   === TECH TREE (Phase 13c) ===
+   The game plan is explicit that this bullet — unlike every other
+   Phase 13 gap — has no original source material to check against:
+   the original never built a tech tree at all, so its shape is this
+   build's own to design, not something to port. Per the actual design
+   conversation that preceded writing this (see chat), the shape
+   settled on is: unlock cost paid directly in existing stockpiled
+   resources (no new "research" currency), a small two-path tree that
+   converges into one capstone, managed from its own Research panel.
+
+   Two real, narrow gaps remained once the rest of Phase 13 was
+   checked against what's already built: Stone Wall (a genuine missing
+   upgrade tier over Palisade — this codebase's own comment on
+   `palisade`/`stoneWall` above already flagged it as deferred to this
+   phase, and the original's real stone-wall cost, stone 14+wood 2, is
+   ported verbatim onto that building) and "better tools" (no original
+   mechanic to extend beyond Workbench's flat passive trickle). Note
+   that "a proper well/cistern" — the tech tree bullet's third example
+   — turned out to already exist: Stone Well and Deep Well are real,
+   tier-gated buildings elsewhere in this catalog (waterYield 12/18,
+   deepWell's cost already including tools same as the original's own
+   "needs tools" flag on it), gated purely by settlement tier with no
+   tech tree involved. Re-gating an already-shipped building behind a
+   *second*, redundant unlock system would just be confusing, so the
+   tech tree below covers the two gaps that actually are gaps, not a
+   third one invented to hit the bullet's exact wording.
+
+   `unlockedTech` is a plain Set, not a gameState field — same
+   "kept outside the main state object" idiom as territory/wornPaths
+   above, persisted separately in the save payload instead. */
+const TECH_TREE = {
+  reinforcedFencing: {
+    id:'reinforcedFencing', name:'Reinforced Fencing', path:'fortification',
+    prereq: [], cost:{wood:15, stone:10},
+    desc:'Cut and fit stone in place of sharpened logs. Unlocks the Stone Wall.'
+  },
+  toolTempering: {
+    id:'toolTempering', name:'Tool Tempering', path:'toolcraft',
+    prereq: [], cost:{wood:10, stone:5, tools:2},
+    desc:"Better heat-treating, better edges. Doubles the Workbench's passive tool output."
+  },
+  ranchIngenuity: {
+    id:'ranchIngenuity', name:'Ranch Ingenuity', path:'capstone',
+    prereq: ['reinforcedFencing','toolTempering'], cost:{wood:20, stone:15, tools:8},
+    desc:'What the ranch has learned building walls and building tools, brought together — a flat +12 to the whole settlement\'s defense score.'
+  }
+};
+const unlockedTech = new Set();
+
+function techPrereqsMet(id){ return TECH_TREE[id].prereq.every(p => unlockedTech.has(p)); }
+function canAffordTech(id){
+  const cost = TECH_TREE[id].cost;
+  return Object.keys(cost).every(k => (resources[k]||0) >= cost[k]);
+}
+/* The one entry point that actually spends resources and unlocks a
+   node — mirrors tryPlaceBuilding's own cost-then-commit shape so
+   this reads the same as everything else that spends `resources`. */
+function researchTech(id){
+  if(unlockedTech.has(id)) return false;
+  if(!techPrereqsMet(id) || !canAffordTech(id)) return false;
+  const cost = TECH_TREE[id].cost;
+  for(const k of Object.keys(cost)) resources[k] -= cost[k];
+  unlockedTech.add(id);
+  flashAlert(`Researched: ${TECH_TREE[id].name}`);
+  logChronicle('event', 'Tech researched', TECH_TREE[id].name);
+  return true;
+}
+/* Read at the Build menu's own gating choke point (see
+   buildingUnlockedAtCurrentTier just above the catalog) — a building
+   with no `requiresTech` field is always available on this axis,
+   same "absent means unrestricted" idiom `minTier` already uses. */
+function buildingUnlockedByTech(typeId){
+  const def = BUILDING_TYPES[typeId];
+  return !def.requiresTech || unlockedTech.has(def.requiresTech);
+}
+
+/* =========================================================
+   === EXPEDITIONS (Phase 14) ===
+   Unlike Phase 13's tech tree, this one has real source material —
+   the plan is explicit the original prototype had a full expedition
+   system, just no Hearthbound equivalent to also cross-check against.
+   Ported per the plan's own field list: a leader (+ House), a member
+   roster, `supplies`/`durationDays`, a pre-departure forecast
+   (`successChance`/`dangerLevel`/`supplyConsumption`/
+   `estimatedReturnDays`/`teamStrength`), and the exact six-way
+   per-member fate set (`ok`/`minor-injury`/`major-injury`/`illness`/
+   `disabled`/`dead`) with prestige feeding the leader's House and a
+   toned (`triumph`/`loss`/`mixed`/`quiet`) generated story.
+
+   One real deviation, flagged rather than silently worked around:
+   the plan's teamStrength formula weights a "forage" skill highest
+   (×1.3) with farm and build skills lower (×0.6 each) — three skills.
+   This codebase's SKILL_LIST (declared above) never split a separate
+   forage skill out from farming, so there's no clean 1:1 mapping.
+   farming stands in for forage (kept at the original's ×1.3), and the
+   original's second ×0.6 farm weight is spent on combat instead of
+   double-counting farming — danger mitigation reads more sensibly for
+   an armed excursion beyond the fence than a repeated farming term.
+
+   `expeditions` is real gameState (per the plan's own data-model
+   sketch, `expeditions: [Expedition]`), not a "kept outside" module
+   like territory/wornPaths/the tech tree — it's plain, already-
+   serializable data with no render-decoupling reason to live apart
+   from the rest of the save. */
+const EXPEDITION_KINDS = {
+  // durationDays/baseDanger have no original numbers to port (the plan
+  // names the forecast's fields, not their values) — this build's own,
+  // picked to read as "further/riskier" from scavenge to faction.
+  scavenge:    { id:'scavenge',    name:'Scavenge Ruins',      durationDays:3, baseDanger:22, desc:'Pick through a dead town for anything still worth carrying home.' },
+  faction:     { id:'faction',     name:'Contact a Faction',   durationDays:5, baseDanger:32, desc:'Find whoever else is still out there and see if they\'re worth dealing with.' },
+  investigate: { id:'investigate', name:'Investigate',         durationDays:4, baseDanger:27, desc:'Chase down something strange spotted at the edge of the map.' }
+};
+const FATE_LABEL = {
+  'ok':'came back fine', 'minor-injury':'came back with a minor injury', 'illness':'came back ill',
+  'major-injury':'came back badly hurt', 'disabled':'came back permanently changed', 'dead':'did not come back'
+};
+// Prestige-per-fate has no original numbers either — invented, biased
+// toward "the worse it went for you personally, the more the House's
+// name grows from it" (a returning survivor's hardship becomes House
+// standing, same spirit as the rest of the prestige system).
+const FATE_PRESTIGE = { 'ok':1, 'minor-injury':2, 'illness':1, 'major-injury':3, 'disabled':4, 'dead':6 };
+const EXPEDITION_STORY_TITLE = { triumph:'A Triumphant Return', loss:'A Grim Homecoming', mixed:'A Costly Trip', quiet:'A Quiet Trip' };
+
+let expeditionIdCounter = 0;
+let expeditions = [];
+
+function computeExpeditionForecast(kindId, memberIds){
+  const kind = EXPEDITION_KINDS[kindId];
+  const members = memberIds.map(id => survivors.find(s => s.id === id)).filter(Boolean);
+  const teamStrength = members.reduce((sum,m) => sum + m.skills.farming*1.3 + m.skills.building*0.6 + m.skills.combat*0.6, 0);
+  const dangerLevel = kind.baseDanger;
+  // This response curve (how successChance moves with teamStrength vs
+  // dangerLevel) has no original formula to port either — this
+  // build's own, clamped to 5-95% so a trip is never a guaranteed
+  // win or a guaranteed loss.
+  const successChance = Math.max(5, Math.min(95, Math.round(50 + (teamStrength - dangerLevel) * 1.4)));
+  const supplyConsumption = Math.round(members.length * kind.durationDays * 2); // 2 food/member/day, invented rate
+  return { successChance, dangerLevel, teamStrength: Math.round(teamStrength), supplyConsumption, estimatedReturnDays: kind.durationDays };
+}
+
+function canDepartExpedition(kindId, leaderId, memberIds){
+  const allIds = [leaderId, ...memberIds.filter(id => id !== leaderId)];
+  // Bugfix (found via Playwright testing): survivor ids start at 0 (the
+  // founder is very often id 0), and `!leaderId` treats 0 as "no
+  // leader" — silently rejecting every expedition led by the founder
+  // or any other id-0 survivor. Must check for null/undefined
+  // specifically, not falsiness.
+  if(leaderId == null || allIds.length === 0) return false;
+  const forecast = computeExpeditionForecast(kindId, allIds);
+  return (resources.food||0) >= forecast.supplyConsumption;
+}
+
+function departExpedition(kindId, leaderId, memberIds){
+  const kind = EXPEDITION_KINDS[kindId];
+  const allIds = [leaderId, ...memberIds.filter(id => id !== leaderId)];
+  if(!canDepartExpedition(kindId, leaderId, memberIds)) return false;
+  const forecast = computeExpeditionForecast(kindId, allIds);
+  resources.food -= forecast.supplyConsumption;
+  for(const id of allIds){
+    const s = survivors.find(ss => ss.id === id);
+    if(!s) continue;
+    releaseJob(s);
+    s.onExpedition = true; // see updateSurvivors' own skip-guard and the render loop's matching one
+  }
+  const leader = survivors.find(s => s.id === leaderId);
+  const exp = {
+    id: expeditionIdCounter++,
+    kind: kindId, leaderId, memberIds: allIds,
+    supplies: forecast.supplyConsumption, durationDays: kind.durationDays,
+    departDay: time.totalDays, returnDay: time.totalDays + kind.durationDays,
+    forecast, status: 'away', result: null
+  };
+  expeditions.push(exp);
+  logChronicle('expedition', `${leader.name} ${leader.surname} leads an expedition`, `${kind.name} — ${allIds.length} member${allIds.length===1?'':'s'}, expected back in ${kind.durationDays} days`);
+  flashAlert(`${kind.name} expedition departs, ${allIds.length} strong.`);
+  return true;
+}
+
+/* Small pure flavor-text namer for the "optional named location" reward
+   — there's no persistent map-location system in this codebase to
+   actually hook a real place into, so this stays text-only in the
+   Chronicle story rather than inventing a whole new world-object type
+   for one reward line. */
+const EXPEDITION_LOCATION_ADJ = ['Broken','Silent','Rusted','Hollow','Forgotten','Ashen','Quiet','Long'];
+const EXPEDITION_LOCATION_NOUN = ['Crossing','Overpass','Depot','Yard','Bridge','Hollow','Market','Station'];
+function generateExpeditionLocationName(){
+  const adj = EXPEDITION_LOCATION_ADJ[Math.floor(survivorRng()*EXPEDITION_LOCATION_ADJ.length)];
+  const noun = EXPEDITION_LOCATION_NOUN[Math.floor(survivorRng()*EXPEDITION_LOCATION_NOUN.length)];
+  return `the ${adj} ${noun}`;
+}
+
+/* One member's individual roll against the trip's successChance/
+   dangerLevel — no original per-member distribution curve to port
+   (only the six-way outcome *set* is sourced), so this is this
+   build's own: a clean miss becomes 'ok', and how badly a failed roll
+   missed by (nudged worse by dangerLevel) walks it down through the
+   remaining five outcomes in the order the plan lists them. */
+function resolveMemberFate(successChance, dangerLevel){
+  const roll = survivorRng()*100;
+  if(roll < successChance) return 'ok';
+  const severity = (roll - successChance) + dangerLevel*0.3;
+  if(severity < 20) return 'minor-injury';
+  if(severity < 40) return 'illness';
+  if(severity < 60) return 'major-injury';
+  if(severity < 80) return 'disabled';
+  return 'dead';
+}
+
+function resolveExpedition(exp){
+  const kind = EXPEDITION_KINDS[exp.kind];
+  const leader = survivors.find(s => s.id === exp.leaderId);
+  const fam = leader ? familyOf(leader) : null;
+  const fates = {};
+  const fateLines = [];
+  let prestigeGain = 0, okCount = 0, badCount = 0, deadCount = 0;
+
+  for(const id of exp.memberIds){
+    const s = survivors.find(ss => ss.id === id);
+    if(!s || s.deceased) continue;
+    s.onExpedition = false; // back on the map regardless of fate — killSurvivor below handles death's own bookkeeping
+    const fate = resolveMemberFate(exp.forecast.successChance, exp.forecast.dangerLevel);
+    fates[id] = fate;
+    prestigeGain += FATE_PRESTIGE[fate];
+    fateLines.push(`${s.name} ${s.surname} ${FATE_LABEL[fate]}.`);
+    if(fate === 'ok') okCount++;
+    else if(fate === 'dead') deadCount++;
+    else badCount++;
+    if(fate === 'minor-injury') applyInjury(s, 'minor');
+    else if(fate === 'illness') applyInjury(s, 'illness');
+    else if(fate === 'major-injury') applyInjury(s, 'severe');
+    else if(fate === 'disabled'){
+      applyInjury(s, 'severe');
+      // No original "disabled" status to port — this build's own
+      // minimal version: permanent, rather than recovering like the
+      // others, and costs the two skills an expedition actually
+      // leans on, rather than a whole new stat system for one fate
+      // out of six.
+      s.disabled = true;
+      s.skills.building = Math.max(1, s.skills.building - 3);
+      s.skills.combat = Math.max(1, s.skills.combat - 3);
+    } else if(fate === 'dead'){
+      killSurvivor(s, `lost on a ${kind.name.toLowerCase()} expedition`);
+    }
+  }
+
+  let storyType;
+  if(deadCount > 0 && okCount === 0) storyType = 'loss';
+  else if(deadCount > 0 || badCount > 0) storyType = 'mixed';
+  else storyType = (survivorRng() < 0.65) ? 'triumph' : 'quiet'; // an all-ok trip usually reads as a win, sometimes just uneventful
+
+  const rewardMult = { triumph:1, mixed:0.5, quiet:0.3, loss:0.1 }[storyType];
+  const rewardLines = [];
+  const woodGain = Math.round((10 + exp.forecast.teamStrength*0.4) * rewardMult);
+  const foodGain = Math.round((8 + exp.forecast.teamStrength*0.3) * rewardMult);
+  if(woodGain > 0){ resources.wood = (resources.wood||0) + woodGain; }
+  if(foodGain > 0){ resources.food = (resources.food||0) + foodGain; }
+  if(woodGain > 0 || foodGain > 0) rewardLines.push(`Brought back ${woodGain} wood and ${foodGain} food.`);
+
+  // Newly-discovered crop — direct hook into the real crop-knowledge
+  // system (unlockedCropIds), same idiom an arrival event's
+  // a.cropKnowledge already uses.
+  if((storyType === 'triumph' || storyType === 'mixed') && survivorRng() < 0.35){
+    const lockedIds = ALL_CROP_IDS.filter(id => !unlockedCropIds.has(id));
+    if(lockedIds.length){
+      const cropId = lockedIds[Math.floor(survivorRng()*lockedIds.length)];
+      unlockedCropIds.add(cropId);
+      rewardLines.push(`Learned how to grow ${CROPS[cropId].name}.`);
+    }
+  }
+
+  // Animal reward — direct hook into Phase 9's livestock, but only
+  // when an existing pen actually has open capacity; there's no
+  // "unhomed animal awaiting assignment" flow to fall back on outside
+  // the gift-a-completed-pen modal, which is keyed to a specific
+  // building, not a general animal-needs-a-home queue.
+  if(storyType === 'triumph' && survivorRng() < 0.3){
+    const pensWithRoom = buildings.filter(b => b.isComplete && BUILDING_TYPES[b.type].species &&
+      animals.filter(a => a.penId === b.id).length < b.livestockCapacity);
+    if(pensWithRoom.length){
+      const pen = pensWithRoom[Math.floor(survivorRng()*pensWithRoom.length)];
+      const def = BUILDING_TYPES[pen.type];
+      animals.push(createAnimal(def.species, pen.id, fam ? fam.id : null, exp.leaderId));
+      rewardLines.push(`Brought back a ${ANIMAL_SPECIES[def.species].name.toLowerCase()} for the ${def.name.toLowerCase()}.`);
+    }
+  }
+
+  // Recruit — joins the leader's own House, same "found a new House"
+  // vs. "joins an existing one" branch arrivals already have, just
+  // always the latter here since an expedition is that House's trip.
+  if(storyType === 'triumph' && survivorRng() < 0.25){
+    const spot = findNearestWalkable(leader.tx, leader.ty);
+    const recruit = createSurvivor(spot.x, spot.y, rollCandidate(), survivors.length);
+    survivors.push(recruit);
+    if(fam){ fam.memberIds.push(recruit.id); recruit.familyId = fam.id; }
+    rewardLines.push(`${recruit.name} ${recruit.surname} joined the party on the way home and asked to stay.`);
+  }
+
+  // Optional named location — flavor only, see generateExpeditionLocationName's own comment.
+  if(storyType === 'triumph' || (storyType === 'mixed' && survivorRng() < 0.4)){
+    rewardLines.push(`Marked the site as ${generateExpeditionLocationName()} on the way back.`);
+  }
+
+  if(fam) fam.prestige = (fam.prestige||0) + prestigeGain;
+
+  const title = `${kind.name}: ${EXPEDITION_STORY_TITLE[storyType]}`;
+  const detail = [...fateLines, ...rewardLines].join(' ');
+  logChronicle('expedition', title, detail);
+  flashAlert(`${leader ? leader.name+' '+leader.surname : 'The party'} returns — ${EXPEDITION_STORY_TITLE[storyType].toLowerCase()}.`);
+  exp.status = 'resolved';
+  exp.result = { outcome: storyType, title, highlights: [...fateLines, ...rewardLines], fates };
+}
+
+/* Called once per day (see onNewDay) rather than per-frame — an
+   expedition resolves on the day it's due, not the instant a fractional
+   day-tick crosses returnDay, matching how every other daily system
+   here (spoilage, forecast, tribute) already reads time.totalDays. */
+function updateExpeditionReturns(){
+  for(const exp of expeditions){
+    if(exp.status === 'away' && time.totalDays >= exp.returnDay) resolveExpedition(exp);
+  }
+}
+
+/* =========================================================
+   === FAMILY TREE (Phase 15) ===
+   The plan calls this out specifically as needing "a real screen, not
+   buried in a panel" — the existing Dynasty panel covers marriage
+   proposals, heir candidates, and a flat House-prestige list, but has
+   no actual genealogy graph. This is that graph: a full-screen
+   overlay, opened from a new button at the top of the Dynasty panel.
+
+   Layout is a simple, good-enough heuristic, not a general-purpose
+   tree-layout solver — deliberately, since this sim's dynasties stay
+   shallow (a handful of generations, dozens of people at most): lay
+   generation 0 out left-to-right by id, then for every later
+   generation, walk the row above in its already-decided order and
+   append each unit's own not-yet-placed children directly beneath it.
+   A married-in spouse rides alongside their partner rather than
+   getting their own slot. This keeps related people visually
+   clustered without a real constraint solver, and is flagged here as
+   exactly that: a simplification, not a port of anything. */
+
+function spouseOfSurvivor(s){
+  for(const rel of relationships.values()){
+    if(rel.tag !== 'spouse') continue;
+    if(rel.aId === s.id) return survivors.find(x => x.id === rel.bId) || null;
+    if(rel.bId === s.id) return survivors.find(x => x.id === rel.aId) || null;
+  }
+  return null;
+}
+
+function computeFamilyTreeLayout(){
+  // Only survivors who are actually part of the dynasty graph — the
+  // founding party (generation 0) always qualifies; anyone else needs
+  // a parent or child link, so a brand-new unconnected arrival doesn't
+  // get a floating node with nothing to connect to.
+  const all = survivors.filter(s => s.generation === 0 || (s.parentIds&&s.parentIds.length) || (s.childrenIds&&s.childrenIds.length));
+  const byId = {};
+  all.forEach(s => byId[s.id] = s);
+  const placed = new Set();
+  const rows = {};
+
+  const gen0 = all.filter(s => s.generation === 0).sort((a,b) => a.id-b.id);
+  rows[0] = [];
+  for(const s of gen0){
+    if(placed.has(s.id)) continue;
+    placed.add(s.id);
+    const sp = spouseOfSurvivor(s);
+    if(sp && sp.generation === 0 && byId[sp.id] && !placed.has(sp.id)){
+      placed.add(sp.id);
+      rows[0].push({ primary: s, spouse: sp });
+    } else {
+      rows[0].push({ primary: s, spouse: null });
+    }
+  }
+
+  let gen = 0;
+  while(rows[gen] && rows[gen].length){
+    const nextGen = gen + 1;
+    const nextRow = [];
+    for(const unit of rows[gen]){
+      const kidIds = new Set([...(unit.primary.childrenIds||[]), ...(unit.spouse ? (unit.spouse.childrenIds||[]) : [])]);
+      const kids = [...kidIds].map(id => byId[id]).filter(k => k && !placed.has(k.id)).sort((a,b) => a.id-b.id);
+      for(const kid of kids){
+        if(placed.has(kid.id)) continue;
+        placed.add(kid.id);
+        const sp = spouseOfSurvivor(kid);
+        if(sp && byId[sp.id] && !placed.has(sp.id)){
+          placed.add(sp.id);
+          nextRow.push({ primary: kid, spouse: sp, parentUnit: unit });
+        } else {
+          nextRow.push({ primary: kid, spouse: null, parentUnit: unit });
+        }
+      }
+    }
+    // Anyone of this generation not reached by walking the row above
+    // (married in from outside the traced line, or a data edge this
+    // heuristic doesn't cover) still gets a slot, appended at the
+    // row's end, rather than silently vanishing from their own tree.
+    const leftover = all.filter(s => s.generation === nextGen && !placed.has(s.id)).sort((a,b) => a.id-b.id);
+    for(const s of leftover){
+      placed.add(s.id);
+      const sp = spouseOfSurvivor(s);
+      if(sp && byId[sp.id] && !placed.has(sp.id)){ placed.add(sp.id); nextRow.push({ primary: s, spouse: sp }); }
+      else nextRow.push({ primary: s, spouse: null });
+    }
+    if(!nextRow.length) break;
+    rows[nextGen] = nextRow;
+    gen = nextGen;
+  }
+
+  const UNIT_W = 150, COUPLE_GAP = 60, UNIT_GAP = 40, ROW_H = 150;
+  const nodes = [], edges = [];
+  let maxX = 0;
+  Object.keys(rows).forEach(genStr => {
+    const g = parseInt(genStr, 10);
+    let x = 0;
+    for(const unit of rows[g]){
+      const w = unit.spouse ? (UNIT_W*2 + COUPLE_GAP) : UNIT_W;
+      const midX = x + w/2;
+      unit._midX = midX;
+      const y = g * ROW_H;
+      if(unit.spouse){
+        const x1 = x + UNIT_W/2, x2 = x + UNIT_W + COUPLE_GAP + UNIT_W/2;
+        nodes.push({ s: unit.primary, x: x1, y });
+        nodes.push({ s: unit.spouse, x: x2, y });
+        edges.push({ type:'spouse', x1, y1:y, x2, y2:y });
+      } else {
+        nodes.push({ s: unit.primary, x: midX, y });
+      }
+      if(unit.parentUnit){
+        edges.push({ type:'parent', x1: unit.parentUnit._midX, y1: (g-1)*ROW_H, x2: midX, y2: y });
+      }
+      x += w + UNIT_GAP;
+    }
+    maxX = Math.max(maxX, x);
+  });
+
+  return { nodes, edges, width: maxX, height: Object.keys(rows).length * ROW_H };
+}
+
+function renderFamilyTree(){
+  const wrap = document.getElementById('familyTreeSvgWrap');
+  const layout = computeFamilyTreeLayout();
+  if(!layout.nodes.length){
+    wrap.innerHTML = `<div class="minister-meta" style="padding:24px;">No family connections yet — the tree fills in once the founding party has children.</div>`;
+    return;
+  }
+  const PAD = 60;
+  const edgesSvg = layout.edges.map(e => {
+    if(e.type === 'spouse'){
+      return `<line x1="${e.x1+PAD}" y1="${e.y1+PAD}" x2="${e.x2+PAD}" y2="${e.y2+PAD}" stroke="rgba(139,58,58,0.55)" stroke-width="2"/>`;
+    }
+    const midY = (e.y1+e.y2)/2 + PAD;
+    return `<path d="M${e.x1+PAD},${e.y1+PAD+20} V${midY} H${e.x2+PAD} V${e.y2+PAD-26}" stroke="rgba(43,29,20,0.45)" stroke-width="2" fill="none"/>`;
+  }).join('');
+  const nodesSvg = layout.nodes.map(n => {
+    const s = n.s;
+    const dead = !!s.deceased;
+    const cx = n.x + PAD, cy = n.y + PAD;
+    const fill = dead ? '#8a8578' : (s.color || '#5a7a86');
+    const initial = (s.name || '?').charAt(0);
+    const safeName = (s.name||'').replace(/[<>&]/g, '');
+    return `
+      <g class="ft-node" data-id="${s.id}" opacity="${dead?0.6:1}" style="cursor:pointer;">
+        <circle cx="${cx}" cy="${cy}" r="24" fill="${fill}" stroke="#241812" stroke-width="2"/>
+        <text x="${cx}" y="${cy+6}" text-anchor="middle" font-size="18" fill="#fdf6e8" font-family="'EB Garamond', serif">${initial}</text>
+        <text x="${cx}" y="${cy+40}" text-anchor="middle" font-size="11.5" fill="#241812" font-family="'EB Garamond', serif">${safeName}${dead?' †':''}</text>
+      </g>
+    `;
+  }).join('');
+  const w = layout.width + PAD*2, h = layout.height + PAD*2 + 20;
+  wrap.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${edgesSvg}${nodesSvg}</svg>`;
+  wrap.querySelectorAll('.ft-node').forEach(g => {
+    g.addEventListener('click', () => showFamilyTreeDetail(parseInt(g.dataset.id, 10)));
+  });
+}
+
+function showFamilyTreeDetail(id){
+  const s = survivors.find(x => x.id === id);
+  const detail = document.getElementById('familyTreeDetail');
+  if(!s){ detail.innerHTML = ''; return; }
+  const sp = spouseOfSurvivor(s);
+  const parents = (s.parentIds||[]).map(pid => survivors.find(x=>x.id===pid)).filter(Boolean);
+  const kids = (s.childrenIds||[]).map(cid => survivors.find(x=>x.id===cid)).filter(Boolean);
+  detail.innerHTML = `
+    <div class="minister-title">${s.name} ${s.surname}${s.deceased?' (deceased)':''}</div>
+    <div class="minister-meta">${s.deceased ? (s.epithetAtDeath||'at rest') : (s.stage+', age '+Math.floor(s.age))} · generation ${s.generation} · ${familyName(s.familyId)}</div>
+    ${sp ? `<div class="minister-meta">Married to ${sp.name} ${sp.surname}</div>` : ''}
+    ${parents.length ? `<div class="minister-meta">Parents: ${parents.map(p=>p.name+' '+p.surname).join(' & ')}</div>` : ''}
+    ${kids.length ? `<div class="minister-meta">Children: ${kids.map(k=>k.name).join(', ')}</div>` : `<div class="minister-meta">No children yet</div>`}
+  `;
+}
+
+function openFamilyTree(){
+  document.getElementById('familyTreeScreen').removeAttribute('hidden');
+  document.getElementById('familyTreeDetail').innerHTML = '';
+  renderFamilyTree();
+  pauseGame();
+}
+function closeFamilyTree(){
+  document.getElementById('familyTreeScreen').setAttribute('hidden','');
+  resumeGame();
+}
+
 function zombieOuterBounds(){
+  if(territory){
+    return { cx: territory.cx, cy: territory.cy, halfW: territory.halfW * (1 + ZOMBIE_OUTER_BUFFER_RATIO), halfH: territory.halfH * (1 + ZOMBIE_OUTER_BUFFER_RATIO) };
+  }
   const cx = (MAP.w * CONFIG.TILE) / 2, cy = (MAP.h * CONFIG.TILE) / 2;
   const r = Math.min(MAP.w, MAP.h) * CONFIG.TILE * 0.25;
   return { cx, cy, halfW: r * (1 + ZOMBIE_OUTER_BUFFER_RATIO), halfH: r * (1 + ZOMBIE_OUTER_BUFFER_RATIO) };
@@ -8173,6 +9712,9 @@ function zombieInOuterBand(x, y){
    margin (matches the original's own `inSettlement(..., buffer=4)`
    call sites, converted from tiles to world-pixels here). */
 function zombieInSettlement(x, y){
+  if(territory){
+    return Math.abs(x - territory.cx) <= territory.halfW + 4*CONFIG.TILE && Math.abs(y - territory.cy) <= territory.halfH + 4*CONFIG.TILE;
+  }
   const cx = (MAP.w * CONFIG.TILE) / 2, cy = (MAP.h * CONFIG.TILE) / 2;
   const r = Math.min(MAP.w, MAP.h) * CONFIG.TILE * 0.25 + 4*CONFIG.TILE;
   return Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
@@ -8311,8 +9853,9 @@ function drawZombieIso(z){
         only ever return true once Phase 11 lands and 12+ Houses exist.
      2. Building damage — real per-building HP (see BUILDING_TYPES'
         maxHP), scoped to just these four buildings.
-     3. Death timing — capped at severe injury, no death in 8b. See
-        MIN_HEALTH_FLOOR above.
+     3. Death timing — capped at severe injury when 8b shipped; runs to
+        real death now [Phase 13, on direct request] — see killSurvivor()
+        near the Legacy & Epithets section.
      4. Guard job — full manual, target-first assignment (already wired
         into the job system above), consistent with Phase 5's rework.
    ========================================================= */
@@ -8345,6 +9888,10 @@ function computeDefenseScore(){
   for(const c of survivors){
     if(c.job && c.job.type === 'guard') score += c.skills.combat * 1.5;
   }
+  // [Phase 13c] Ranch Ingenuity's flat settlement-wide bonus — new
+  // addition on top of the plan's original formula above, not part of
+  // it, so kept as a separate addend rather than folded silently in.
+  if(unlockedTech.has('ranchIngenuity')) score += 12;
   return score;
 }
 
@@ -8353,13 +9900,14 @@ function computeThreatScore(){
   return zombies.length * PER_ZOMBIE_THREAT * (1 + dangerLevel/100);
 }
 
-const INJURY_RANGES = { minor:[15,20], moderate:[20,30], severe:[30,40] }; // -15..-40 overall, per plan
+const INJURY_RANGES = { minor:[15,20], moderate:[20,30], severe:[30,40], illness:[18,26] }; // -15..-40 overall, per plan; illness is Phase 14's own addition, reusing this exact system rather than a parallel disease mechanic — see resolveExpedition
 function applyInjury(c, severity){
   const [lo, hi] = INJURY_RANGES[severity] || INJURY_RANGES.minor;
   const loss = lo + survivorRng()*(hi-lo);
-  c.health = Math.max(MIN_HEALTH_FLOOR, c.health - loss);
+  c.health = Math.max(0, c.health - loss);
   c.injury = { severity, at: performance.now() };
   c.mood = Math.max(0, c.mood - 10);
+  if(c.health <= 0) killSurvivor(c, 'injury');
 }
 
 /* Entry point for starting an incursion. `force=true` bypasses
@@ -9343,17 +10891,20 @@ function updatePauseIndicator(){
   if(el) el.hidden = !gamePaused;
 }
 
+let gameSpeed = 1;     // [Phase 15] 1/2/3, player-selected
+let playerPaused = false; // [Phase 15] separate from gamePaused — see #speedcontrols' own comment
 function render(now){
   const dt = Math.min(0.1, (now - lastFrameTime) / 1000); // clamp to avoid tab-switch jumps
   lastFrameTime = now;
-  if(!gamePaused){
-    advanceGameTime(dt);   // [Phase 7] real calendar tick — no-op until founded
-    updateZombies(dt);     // [Phase 8a] atmospheric perimeter — no-op until founded
-    updateIncursions(dt);  // [Phase 8b] real threat resolution — inert until Phase 11 unlocks it
-    updateAnimals(dt);     // [Phase 9] livestock hunger/health/produce — no-op until founded
+  if(!gamePaused && !playerPaused){
+    const scaledDt = dt * gameSpeed; // [Phase 15] every sim system below moves at the player's chosen speed together, not just the calendar
+    advanceGameTime(scaledDt);   // [Phase 7] real calendar tick — no-op until founded
+    updateZombies(scaledDt);     // [Phase 8a] atmospheric perimeter — no-op until founded
+    updateIncursions(scaledDt);  // [Phase 8b] real threat resolution — inert until Phase 11 unlocks it
+    updateAnimals(scaledDt);     // [Phase 9] livestock hunger/health/produce — no-op until founded
     updateLivestockTribute(); // [Phase 9] runs off time.totalDays, not dt directly
     updatePendingTalk(); // [Phase 11]
-    updateSurvivors(dt);
+    updateSurvivors(scaledDt);
   }
   // [Bugfix] updateResourceBar() used to be a manual, call-it-yourself-
   // after-every-mutation function (see its own comment above) — but the
@@ -9420,6 +10971,16 @@ function render(now){
       diamondPath(s.x, s.y, tw, th);
       ctx.fillStyle = col;
       ctx.fill();
+      // [Phase 13b] worn-path overlay — a quantized dirt tint, darker
+      // as more foot traffic has crossed this tile. Drawn on top of the
+      // base terrain fill but before the grid line, so the grid still
+      // reads cleanly over a worn tile same as an unworn one.
+      const wearLevel = wornPathLevel(tx, ty);
+      if(wearLevel > 0){
+        diamondPath(s.x, s.y, tw, th);
+        ctx.fillStyle = `rgba(90,62,38,${0.08 + wearLevel*0.07})`;
+        ctx.fill();
+      }
       if(showGrid){
         ctx.strokeStyle = 'rgba(0,0,0,0.12)';
         ctx.stroke();
@@ -9670,6 +11231,9 @@ function drawWorldObjects(){
     items.push({ depth: isoDepth((p.tx+0.5)*CONFIG.TILE, (p.ty+0.5)*CONFIG.TILE) - 0.0005, draw: () => drawGroundPile(p) });
   }
   for(const c of survivors){
+    // [Phase 14] a survivor away on an expedition simply doesn't draw —
+    // they're off the map, not standing invisibly in place.
+    if(c.onExpedition) continue;
     // survivors draw a hair "later" than a building at the same depth so
     // someone standing in a doorway reads as in front of it, not behind.
     items.push({ depth: isoDepth(c.wx, c.wy) + 0.001, draw: () => drawSurvivorIso(c) });
@@ -9863,7 +11427,10 @@ requestAnimationFrame(render);
    ========================================================= */
 function renderSurvivorBar(){
   const bar = document.getElementById('survivorbar');
-  bar.innerHTML = survivors.map(c => {
+  // [Phase 13] the deceased stay in the survivors array (see
+  // killSurvivor()'s own comment on why) but don't belong in a
+  // clickable living roster.
+  bar.innerHTML = survivors.filter(c => !c.deceased).map(c => {
     const moodColor = c.breaking ? '#8b3a2f' : (c.mood>=60 ? '#5a7247' : c.mood>=30 ? '#c9a23c' : '#8b3a2f');
     return `
     <div class="survivor-card panel${c===selectedSurvivor?' selected':''}${c.breaking?' breaking':''}" data-id="${c.id}">
@@ -9932,7 +11499,11 @@ function flashStatus(msg){
   setTimeout(() => { if(saveStatus.textContent === msg) saveStatus.textContent = ''; }, 2200);
 }
 
-document.getElementById('saveBtn').addEventListener('click', async () => {
+// [Phase 15] pulled out of the old saveBtn click handler verbatim so
+// both a manual save and the new autosave can build the exact same
+// payload — no behavior change, just a name for what was already an
+// inline object literal.
+function buildSaveState(){
   const state = {
     name: 'The Ranch Save',
     tick: 0,
@@ -9974,7 +11545,16 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       // SCHEMA v12: real, earned trust — persist it, same reasoning as
       // housingSatisfaction above (a smoothed value, not a transient
       // claim). [Phase 12b]
-      loyaltyToFounder: c.loyaltyToFounder
+      loyaltyToFounder: c.loyaltyToFounder,
+      // SCHEMA v13: permanent death state. [Phase 13]
+      deceased: c.deceased, deathDay: c.deathDay, deathCause: c.deathCause, epithetAtDeath: c.epithetAtDeath,
+      // SCHEMA v14: away-on-expedition is real, earned world state, not
+      // a transient job claim — a survivor mid-trip on save/load must
+      // stay off-map and un-jobbed until they actually return, not pop
+      // back into the settlement just because the game reloaded.
+      // `disabled` is the expedition system's own permanent fate,
+      // persisted the same way `deceased` is. [Phase 14]
+      onExpedition: c.onExpedition || false, disabled: c.disabled || false
     })),
     // SCHEMA v6: full ResourceKind set persisted, see the `resources`
     // declaration comment for what's actually live vs. stubbed. [Phase 6]
@@ -10004,6 +11584,18 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     politicalCapital, pendingPromises, lastCouncilYear,
     // SCHEMA v12: Laws & Governance state. [Phase 12.5]
     enactedLaws, factionSentiment,
+    // SCHEMA v13: territory. [Phase 13a]
+    territory, territoryExpansions,
+    // SCHEMA v13: worn paths — a plain array of [tileKey, rawCount]
+    // pairs, same shape Map.entries() yields. Kept module-level rather
+    // than in gameState (see the Worn Paths section's own comment) but
+    // still persisted here so a reload doesn't silently erase every
+    // trail the settlement has actually worn in. [Phase 13b]
+    wornPaths: Array.from(wornPaths.entries()),
+    // SCHEMA v13: tech tree — a plain array of unlocked tech ids.
+    // Same "module-level, not gameState" reasoning as wornPaths just
+    // above. [Phase 13c]
+    unlockedTech: Array.from(unlockedTech),
     buildings: buildings.map(b => ({
       id: b.id, type: b.type, tx: b.tx, ty: b.ty,
       isComplete: b.isComplete, workRequired: b.workRequired, workDone: b.workDone,
@@ -10082,26 +11674,63 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // state, same shape as livestockRequests above. [Phase 12a]
     ministers: ministers.map(m => ({ id:m.id, role:m.role, survivorId:m.survivorId, satisfaction:m.satisfaction, requestsApproved:m.requestsApproved, requestsRejected:m.requestsRejected })),
     ministerRequests: ministerRequests.map(r => ({ id:r.id, ministerId:r.ministerId, role:r.role, requestedWorkers:r.requestedWorkers, approvedWorkers:r.approvedWorkers, recruitedWorkers:r.recruitedWorkers, reason:r.reason, status:r.status, day:r.day })),
+    // SCHEMA v14: expeditions — real gameState per the plan's own data
+    // model (not a "kept outside gameState" module like territory/
+    // wornPaths/tech), so it's whitelisted here the same way every
+    // other array above is. [Phase 14]
+    expeditions: expeditions.map(e => ({
+      id:e.id, kind:e.kind, leaderId:e.leaderId, memberIds:e.memberIds.slice(),
+      supplies:e.supplies, durationDays:e.durationDays, departDay:e.departDay, returnDay:e.returnDay,
+      forecast: { ...e.forecast }, status:e.status,
+      result: e.result ? { outcome:e.result.outcome, title:e.result.title, highlights:e.result.highlights.slice(), fates:{...e.result.fates} } : null
+    })),
     // [Phase 13] real computed tier, not hardcoded — this is purely a
     // menu-preview convenience (see the Continue button's meta text);
     // computeSettlementTier() is always live-derived from population/
     // buildings/houses everywhere else, never restored as stored state.
     settlementTier: founded ? computeSettlementTier() : 'camp'
   };
+  return state;
+}
+
+// [Phase 15] three player-chosen manual slots, plus a separate,
+// automatic fourth the player can load from but never overwrites by
+// hand — same "a save/load round trip must never let the player dodge
+// a real cost or reset a clock" spirit the rest of this save schema
+// already follows, just applied to the safety net itself: an autosave
+// is only a safety net if the player can't accidentally clobber it.
+const SAVE_SLOT_IDS = ['slot1', 'slot2', 'slot3'];
+const AUTOSAVE_SLOT_ID = 'autosave';
+
+async function saveToSlot(slotId){
   try{
-    await RanchDB.saveGame('slot1', state);
+    await RanchDB.saveGame(slotId, buildSaveState());
     flashStatus('saved to IndexedDB ✓');
+    return true;
   } catch(err){
     flashStatus('save failed');
     console.error(err);
+    return false;
   }
-});
+}
 
-document.getElementById('loadBtn').addEventListener('click', async () => { await performLoad(); });
+document.getElementById('saveBtn').addEventListener('click', () => { openSlotPicker('save'); });
+document.getElementById('loadBtn').addEventListener('click', () => { openSlotPicker('load'); });
 
-async function performLoad(){
+// [Phase 15] once per in-game day (see onNewDay), silent — no
+// flashStatus toast, so it never competes with the day's other
+// notifications; a failed autosave is logged, not surfaced, since
+// it must never block or interrupt actual play the way a failed
+// manual save's toast is allowed to.
+async function performAutosave(){
+  if(!founded) return;
+  try{ await RanchDB.saveGame(AUTOSAVE_SLOT_ID, buildSaveState()); }
+  catch(err){ console.error('autosave failed', err); }
+}
+
+async function performLoad(slotId = 'slot1'){
   try{
-    const state = await RanchDB.loadGame('slot1');
+    const state = await RanchDB.loadGame(slotId);
     if(!state){ flashStatus('no save found'); return false; }
     camera.x = state.camera.x;
     camera.y = state.camera.y;
@@ -10180,6 +11809,18 @@ async function performLoad(){
         // SCHEMA v12: pre-Phase-12b saves have no loyaltyToFounder —
         // falls back to createSurvivor's fresh neutral `50`. [Phase 12b]
         if(cd.loyaltyToFounder !== undefined) restored.loyaltyToFounder = cd.loyaltyToFounder;
+        // SCHEMA v13: pre-Phase-13 saves have none of these — falls
+        // back to createSurvivor's fresh `deceased: undefined` (falsy,
+        // same as never having died). [Phase 13]
+        if(cd.deceased !== undefined) restored.deceased = cd.deceased;
+        if(cd.deathDay !== undefined) restored.deathDay = cd.deathDay;
+        if(cd.deathCause !== undefined) restored.deathCause = cd.deathCause;
+        if(cd.epithetAtDeath !== undefined) restored.epithetAtDeath = cd.epithetAtDeath;
+        // SCHEMA v14: pre-Phase-14 saves have neither — falls back to
+        // createSurvivor's fresh `onExpedition: false, disabled: false`.
+        // [Phase 14]
+        if(cd.onExpedition !== undefined) restored.onExpedition = cd.onExpedition;
+        if(cd.disabled !== undefined) restored.disabled = cd.disabled;
         survivors.push(restored);
       }
       survivorIdCounter = Math.max(...survivors.map(c=>c.id)) + 1;
@@ -10189,7 +11830,7 @@ async function performLoad(){
       // [Bottom-left swap] 'infopanel' removed here too, same reason as
       // the founding path — its hidden state is selection-driven, not
       // part of this generic reveal.
-      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
+      ['jobsbar','livestockbar','chroniclebar','dynastybar','ministersbar','lawsbar','researchbar','expeditionsbar','leadershipbar','buildbar','settingsbar','zoomcontrols','titlebar'].forEach(id => document.getElementById(id).removeAttribute('hidden'));
       renderSurvivorBar();
       // Nothing is selected right after a load, so this just enforces
       // infopanel hidden / roster bar shown in the bottom-left slot.
@@ -10252,6 +11893,42 @@ async function performLoad(){
     // enacted, all sentiment neutral at 50). [Phase 12.5]
     enactedLaws = state.enactedLaws ? { ...state.enactedLaws } : {};
     if(state.factionSentiment) factionSentiment = { ...factionSentiment, ...state.factionSentiment };
+    // SCHEMA v13: pre-Phase-13a saves have no territory at all — for a
+    // founded save, fall back to initializing it fresh centered on the
+    // current founder's position (same as a brand-new founding would),
+    // rather than leaving territory null and silently reverting every
+    // zombie-perimeter check to the old map-center fallback forever.
+    if(state.territory){
+      territory = { ...state.territory };
+      territoryExpansions = state.territoryExpansions || 0;
+    } else if(founded){
+      const f = survivors.find(s => s.isFounder);
+      if(f) initTerritory(f.wx, f.wy);
+    } else {
+      territory = null;
+      territoryExpansions = 0;
+    }
+    // SCHEMA v13: pre-Phase-13b saves have no wornPaths field at all —
+    // fall back to a clean, untrodden map rather than fabricating wear
+    // history that never actually happened. [Phase 13b]
+    wornPaths.clear();
+    if(state.wornPaths) for(const [key, raw] of state.wornPaths) wornPaths.set(key, raw);
+    // SCHEMA v13: pre-Phase-13c saves have no unlockedTech field —
+    // fall back to nothing researched rather than fabricating progress
+    // that was never actually earned. [Phase 13c]
+    unlockedTech.clear();
+    if(state.unlockedTech) for(const id of state.unlockedTech) unlockedTech.add(id);
+    // SCHEMA v14: pre-Phase-14 saves have no expeditions field — fall
+    // back to none in flight, same "nothing fabricated" reasoning as
+    // wornPaths/unlockedTech just above. [Phase 14]
+    expeditions.length = 0;
+    if(state.expeditions) for(const ed of state.expeditions) expeditions.push({
+      id: ed.id, kind: ed.kind, leaderId: ed.leaderId, memberIds: ed.memberIds.slice(),
+      supplies: ed.supplies, durationDays: ed.durationDays, departDay: ed.departDay, returnDay: ed.returnDay,
+      forecast: { ...ed.forecast }, status: ed.status,
+      result: ed.result ? { outcome: ed.result.outcome, title: ed.result.title, highlights: ed.result.highlights.slice(), fates: { ...ed.result.fates } } : null
+    });
+    expeditionIdCounter = expeditions.length ? Math.max(...expeditions.map(e=>e.id))+1 : 0;
     pendingArrival = null;
     buildings.length = 0;
     buildingGrid.clear();
