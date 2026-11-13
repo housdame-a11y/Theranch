@@ -1193,6 +1193,25 @@
     max-height:30vh; overflow-y:auto;
   }
   #familyTreeDetail:empty{ display:none; }
+  /* [Phase 15] onboarding modal — same dim-backdrop treatment as
+     #terrainModal; z-index 62 keeps it comfortably clear of that
+     (60) and of #confirmModal (90) without needing to reason about
+     ever appearing alongside either in practice. */
+  #tutorialModal{
+    position:absolute; inset:0; z-index:62;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:radial-gradient(ellipse at center, rgba(36,24,18,0.72) 0%, rgba(20,13,9,0.92) 100%);
+  }
+  #tutorialModal[hidden]{ display:none; }
+  #tutorialBody{ min-height:120px; padding:4px 2px 10px; }
+  #tutorialBody h3{ margin:0 0 8px; font-family:'Cinzel', serif; font-size:16px; }
+  #tutorialBody p{ margin:0; font-family:'EB Garamond', serif; font-size:14px; line-height:1.5; }
+  .tutorial-footer{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #tutorialDots{ display:flex; gap:5px; }
+  .tutorial-dot{ width:7px; height:7px; border-radius:50%; background:rgba(43,29,20,0.25); }
+  .tutorial-dot.active{ background:var(--moss); }
+  .tutorial-nav{ display:flex; gap:6px; }
   #terrainList{ overflow-y:auto; display:flex; flex-direction:column; }
   .terrain-entry{
     display:flex; align-items:flex-start; gap:10px;
@@ -1792,6 +1811,9 @@
       <button id="saveBtn" class="menu-btn">Save</button>
       <button id="loadBtn" class="menu-btn secondary">Load</button>
       <button id="terrainGuideBtn" class="menu-btn secondary">Terrain</button>
+      <!-- [Phase 15] reopens the same onboarding sequence a first-time
+           player sees automatically right after founding. -->
+      <button id="tutorialBtn" class="menu-btn secondary">Tutorial</button>
       <button id="backToMenuBtn" class="menu-btn secondary">Back to Menu</button>
     </div>
     <div id="saveStatus" class="menu-meta"></div>
@@ -1824,6 +1846,28 @@
     </div>
     <div class="assign-sub" id="slotPickerSub">Choose a slot to save to.</div>
     <div id="slotPickerList"></div>
+  </div>
+</div>
+
+<!-- [Phase 15] onboarding — a short, skippable slide sequence. Same
+     .panel.assign-panel shape as Terrain Guide/the slot picker rather
+     than a fifth modal layout. Shown automatically once per browser
+     right after a player's first-ever founding (see foundBtn's own
+     handler), and reopenable anytime from Settings. -->
+<div id="tutorialModal" hidden>
+  <div class="panel assign-panel">
+    <div class="assign-header">
+      <span class="title">How to Play</span>
+      <button id="tutorialSkipBtn" class="mini-btn secondary">Skip</button>
+    </div>
+    <div id="tutorialBody"></div>
+    <div class="tutorial-footer">
+      <div id="tutorialDots"></div>
+      <div class="tutorial-nav">
+        <button id="tutorialBackBtn" class="mini-btn secondary">Back</button>
+        <button id="tutorialNextBtn" class="mini-btn">Next</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3737,6 +3781,16 @@ function updateChallengerBuildup(){
    same "shape before content" precedent as Honest was until this
    phase gave it a producer. */
 const COUNCIL_CONTEST_BUILDUP_RATIO = 0.75; // the plan's exact number
+// [Phase 16 bugfix] a rival's buildup must clear at least this much to
+// contest at all, independent of the leader's prestige. Replaces a
+// `leaderPrestige > 0` conjunct that made a zero-prestige leader
+// House — the weakest possible position, and exactly where a
+// freshly-succeeded leader starts — structurally immune to rival
+// challenges (see isCouncilContested). No original number; chosen to
+// sit well above the sub-1 buildup values of a young, quiet ranch so
+// this can't fire trivially at game start, while still being reachable
+// within a couple of years of real discontent. Flagged, tunable.
+const COUNCIL_CONTEST_MIN_BUILDUP = 5;
 const COUNCIL_CONTEST_WEAK_AUTHORITY = 20;  // the "Weak Leader" rung floor from 12b
 const PROMISE_OFFICE_DEADLINE_DAYS = 60;    // no original number — flagged, same as every other delta this cluster
 let politicalCapital = 50; // the plan's own stated starting value
@@ -3764,9 +3818,18 @@ function isCouncilContested(){
   const founder = survivors.find(s => s.isFounder);
   const founderFamily = founder ? families.find(f => f.id === founder.familyId) : null;
   const challenger = currentChallengerFamily();
+  // [Phase 16 bugfix] was `... && (founderFamily.prestige||0) > 0`,
+  // which made a prestige-0 leader House immune to challengers — found
+  // by a long-horizon bot simulation where a rival's buildup reached
+  // 48 against a 0-prestige leader for 8+ in-game years without a
+  // single contested vote. Now the rival must clear max(75% of leader
+  // prestige, COUNCIL_CONTEST_MIN_BUILDUP): identical behavior for any
+  // leader with real prestige above ~6.7, and a real, reachable
+  // threshold for one with little or none.
   const strongRival = !!(challenger && founderFamily &&
-    (challenger.challengerBuildup||0) >= COUNCIL_CONTEST_BUILDUP_RATIO * (founderFamily.prestige||0) &&
-    (founderFamily.prestige||0) > 0);
+    (challenger.challengerBuildup||0) >= Math.max(
+      COUNCIL_CONTEST_BUILDUP_RATIO * (founderFamily.prestige||0),
+      COUNCIL_CONTEST_MIN_BUILDUP));
   const weakLeader = authorityValue() < COUNCIL_CONTEST_WEAK_AUTHORITY;
   return strongRival || weakLeader;
 }
@@ -7601,7 +7664,28 @@ foundBtn.addEventListener('click', () => {
   // into a fresh founding.
   expeditions.length = 0;
   expeditionIdCounter = 0;
+  // [Phase 15] onboarding — once per browser, not once per settlement:
+  // a player's second or fifth ranch shouldn't re-explain the basics,
+  // but their first ever founding should. localStorage rather than the
+  // save file itself, since "has this player seen the tutorial" is a
+  // fact about the person at this browser, not about any one
+  // settlement's own state.
+  if(!tutorialSeen()) openTutorial();
 });
+// Wrapped in try/catch same as the rest of this codebase is careful
+// about embedded/restrictive webviews (see confirmDialog's own comment
+// on why window.confirm() isn't trusted either) — a storage read/write
+// failure here should never block founding a settlement. Defaults to
+// "seen" on error rather than forcing the tutorial open every single
+// founding if storage is broken.
+function tutorialSeen(){
+  try{ return !!localStorage.getItem('ranch_tutorial_seen'); }
+  catch(err){ return true; }
+}
+function markTutorialSeen(){
+  try{ localStorage.setItem('ranch_tutorial_seen', '1'); }
+  catch(err){ /* best-effort only */ }
+}
 
 renderFounderBgGrid();
 rollCompanionCandidates();
@@ -9695,6 +9779,80 @@ function closeFamilyTree(){
   resumeGame();
 }
 
+/* =========================================================
+   === ONBOARDING (Phase 15) ===
+   A short, skippable slide sequence — shown automatically once per
+   browser right after a player's first-ever founding (see foundBtn's
+   handler), and reopenable anytime from Settings. Kept to a handful
+   of slides on purpose: this is meant to be read in under a minute,
+   not a full manual — the plan's own deliverable language is "understand
+   in 2 minutes," not "cover every system." Phases 9-14's own
+   panels (Ministers, Dynasty, Laws, Research, Expeditions, Leadership)
+   all get one consolidated slide rather than one each, since by the
+   time most of them matter the player already has the basics down. */
+const TUTORIAL_SLIDES = [
+  {
+    title: 'What\'s Left, After',
+    body: 'You\'re leading a small founding party into what\'s left of the world. Keep them fed, watered, and sheltered — and build something that outlasts you.'
+  },
+  {
+    title: 'Resources & Needs',
+    body: 'The panel in the top-left tracks your stockpile, the season, and the day. Tap any survivor to see their own needs — food, water, rest, mood — on their info card.'
+  },
+  {
+    title: 'Building & Jobs',
+    body: 'The hammer icon opens the Build menu. Most buildings need a worker — tap an idle survivor and assign them, or leave it to them: survivors pick up open jobs on their own.'
+  },
+  {
+    title: 'Time Controls',
+    body: 'The Pause / 1× / 2× / 3× buttons next to the clock control how fast time passes. Pause any time you need to stop and think — nothing moves while you do.'
+  },
+  {
+    title: 'Leading, Not Just Building',
+    body: 'As the settlement grows, more panels unlock along the top-right — Ministers, Dynasty (with its own family tree), Laws, Research, Expeditions, and the Leadership dashboard. That\'s the part of this that\'s actually about ruling the place, not just building it.'
+  },
+  {
+    title: 'That\'s the Basics',
+    body: 'Reopen this anytime from Settings. Good luck out there.'
+  }
+];
+let tutorialSlideIdx = 0;
+
+function openTutorial(){
+  tutorialSlideIdx = 0;
+  document.getElementById('tutorialModal').removeAttribute('hidden');
+  renderTutorialSlide();
+  pauseGame();
+}
+function closeTutorial(){
+  document.getElementById('tutorialModal').setAttribute('hidden','');
+  markTutorialSeen();
+  resumeGame();
+}
+function renderTutorialSlide(){
+  const slide = TUTORIAL_SLIDES[tutorialSlideIdx];
+  document.getElementById('tutorialBody').innerHTML = `<h3>${slide.title}</h3><p>${slide.body}</p>`;
+  document.getElementById('tutorialDots').innerHTML = TUTORIAL_SLIDES.map((_, i) =>
+    `<span class="tutorial-dot${i===tutorialSlideIdx?' active':''}"></span>`
+  ).join('');
+  const backBtn = document.getElementById('tutorialBackBtn');
+  const nextBtn = document.getElementById('tutorialNextBtn');
+  backBtn.disabled = tutorialSlideIdx === 0;
+  nextBtn.textContent = tutorialSlideIdx === TUTORIAL_SLIDES.length - 1 ? 'Done' : 'Next';
+}
+document.getElementById('tutorialBackBtn').addEventListener('click', () => {
+  if(tutorialSlideIdx > 0){ tutorialSlideIdx--; renderTutorialSlide(); }
+});
+document.getElementById('tutorialNextBtn').addEventListener('click', () => {
+  if(tutorialSlideIdx < TUTORIAL_SLIDES.length - 1){ tutorialSlideIdx++; renderTutorialSlide(); }
+  else closeTutorial();
+});
+document.getElementById('tutorialSkipBtn').addEventListener('click', closeTutorial);
+document.getElementById('tutorialBtn').addEventListener('click', () => {
+  closeSettingsMenu();
+  openTutorial();
+});
+
 function zombieOuterBounds(){
   if(territory){
     return { cx: territory.cx, cy: territory.cy, halfW: territory.halfW * (1 + ZOMBIE_OUTER_BUFFER_RATIO), halfH: territory.halfH * (1 + ZOMBIE_OUTER_BUFFER_RATIO) };
@@ -9862,7 +10020,11 @@ function drawZombieIso(z){
 const PER_ZOMBIE_THREAT = 1.2; // no original equivalent — this rebuild's own tuning knob
 let dangerLevel = 0;           // 0-100, persists across save/load
 let incursionCooldownTimer = 30 + survivorRng()*30; // seconds until the next natural-trigger roll
-let pendingIncursion = null;   // { resolveAt, hasWatchtower } while an early-warning window is open
+// { remaining, hasWatchtower } while an early-warning window is open.
+// `remaining` is in GAME seconds, counted down by updateIncursions' own
+// dt — not a wall-clock deadline. [Phase 16 bugfix] See triggerIncursion.
+let pendingIncursion = null;
+const INCURSION_WARNING_SECONDS = 15;
 
 /* Hard-gated behind Phase 11's Family/House system existing at all, per
    the user's explicit decision (not a population-count proxy). `families`
@@ -9922,10 +10084,22 @@ function triggerIncursion(force){
   const hasWatchtower = buildings.some(b => b.isComplete && b.type === 'watchtower');
   if(hasWatchtower){
     flashAlert('⚠ The watchtower spots movement at the treeline — an incursion is coming.');
-    pendingIncursion = { resolveAt: performance.now() + 15000, hasWatchtower: true }; // 15s to react
+    // [Phase 16 bugfix] this used to be a wall-clock deadline
+    // (performance.now() + 15000). Wall-clock keeps running while the
+    // game is paused, so with the Phase 15 Pause button — or any modal
+    // opening — the whole warning window could expire while updateIncursions
+    // wasn't even being called, and the incursion then resolved on the
+    // very first frame after resuming: the player lost the warning they
+    // were supposedly given. Reproduced with Playwright (paused 16.5s
+    // mid-warning, resolved within 250ms of resuming). Counting down in
+    // game seconds instead means a pause freezes the window, and 2x/3x
+    // shortens it in real time exactly as it shortens everything else —
+    // which is also the right relationship to the player's actual
+    // response, since guards walking to their posts run on game time too.
+    pendingIncursion = { remaining: INCURSION_WARNING_SECONDS, hasWatchtower: true };
   } else {
     flashAlert('The perimeter is breached without warning — no watchtower stood watch.');
-    pendingIncursion = { resolveAt: performance.now(), hasWatchtower: false }; // no window at all
+    pendingIncursion = { remaining: 0, hasWatchtower: false }; // no window at all
   }
   return true;
 }
@@ -9995,7 +10169,8 @@ function updateIncursions(dt){
   dangerLevel = Math.min(100, dangerLevel + (0.4/DAY_LENGTH_SECONDS)*dt); // slow background drift
 
   if(pendingIncursion){
-    if(performance.now() >= pendingIncursion.resolveAt) resolveIncursion();
+    pendingIncursion.remaining -= dt;
+    if(pendingIncursion.remaining <= 0) resolveIncursion();
     return;
   }
   incursionCooldownTimer -= dt;
@@ -10017,7 +10192,7 @@ function updateIncursions(dt){
 window.__debugTriggerIncursion = function(){ return triggerIncursion(true); };
 window.__debugResolveIncursionNow = function(){
   if(!pendingIncursion) triggerIncursion(true);
-  if(pendingIncursion) pendingIncursion.resolveAt = performance.now();
+  if(pendingIncursion) pendingIncursion.remaining = 0;
   updateIncursions(0);
 };
 window.__debugIncursionState = function(){
